@@ -15,14 +15,20 @@ import {
   notationStyles,
 } from "../lib/chessBoardStyles"
 import { CLOCK_LABEL, useChessClock } from "../lib/chessClock"
+import {
+  BOT_OPPONENT_RD,
+  formatRatingChange,
+  isProvisionalRating,
+  scoreFromResult,
+  updateRatingAfterGame,
+} from "../lib/glicko"
 import { recordGame } from "../lib/recordGame"
 import { getStockfishEngine } from "../lib/stockfishEngine"
 import {
   currentWeekIndex,
   weeklyPositions,
-  type WeeklyPosition,
 } from "../data/mockData"
-import type { GameResult } from "../types/profile"
+import { playerRatingSnapshot, type GameResult } from "../types/profile"
 
 type GamePageProps = {
   onExit: () => void
@@ -39,8 +45,8 @@ type GameOutcome = {
 const ghostButtonClass =
   "cursor-pointer rounded-full border border-white/70 bg-white/50 px-4 py-2 text-[10px] font-medium tracking-[0.14em] text-ink/70 uppercase transition-all duration-300 hover:bg-white/80 hover:text-ink sm:px-5 sm:py-2.5 sm:text-[11px]"
 
-function userColorForPosition(position: WeeklyPosition): Color {
-  return position.toMove.toLowerCase().startsWith("white") ? "w" : "b"
+function randomUserColor(): Color {
+  return Math.random() < 0.5 ? "w" : "b"
 }
 
 function resultFromChess(chess: Chess, userColor: Color): GameOutcome {
@@ -81,9 +87,11 @@ function applyUciMove(chess: Chess, uci: string): boolean {
 }
 
 export function GamePage({ onExit, onSignIn }: GamePageProps) {
-  const { user, profile, refreshGames, refreshProfile, loading: authLoading } = useAuth()
+  const { user, profile, refreshGames, refreshProfile, patchProfileRating, loading: authLoading } = useAuth()
   const position = weeklyPositions[currentWeekIndex >= 0 ? currentWeekIndex : 0]
-  const userColor = userColorForPosition(position)
+  const [userColor, setUserColor] = useState<Color>(randomUserColor)
+  const userColorRef = useRef(userColor)
+  const botColorRef = useRef<Color>(userColor === "w" ? "b" : "w")
   const botColor: Color = userColor === "w" ? "b" : "w"
   const userRating = profile?.rating ?? 1200
   const botRating = botRatingForUser(userRating)
@@ -101,11 +109,23 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const [controlMessage, setControlMessage] = useState<string | null>(null)
   const [engineError, setEngineError] = useState<string | null>(null)
   const [outcome, setOutcome] = useState<GameOutcome | null>(null)
-  const [savedRating, setSavedRating] = useState<number | null>(null)
+  const [ratingResult, setRatingResult] = useState<{
+    previousRating: number
+    newRating: number
+    ratingChange: number
+    isProvisional: boolean
+  } | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [showGameOverCard, setShowGameOverCard] = useState(true)
   const gameRecordedRef = useRef(false)
   const drawTimeoutRef = useRef<number | null>(null)
+
+  const assignUserColor = useCallback((color: Color) => {
+    userColorRef.current = color
+    botColorRef.current = color === "w" ? "b" : "w"
+    setUserColor(color)
+  }, [])
 
   const boardOrientation = (userColor === "w" ? "white" : "black") as "white" | "black"
   const activeColor = phase === "playing" ? chessRef.current.turn() : null
@@ -114,6 +134,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     async (nextOutcome: GameOutcome) => {
       setOutcome(nextOutcome)
       setPhase("game_over")
+      setShowGameOverCard(true)
       setControlMessage(null)
 
       if (drawTimeoutRef.current !== null) {
@@ -121,9 +142,24 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         drawTimeoutRef.current = null
       }
 
-      if (!user || !profile || gameRecordedRef.current) {
+      if (!user || gameRecordedRef.current) {
         return
       }
+
+      const player = playerRatingSnapshot(profile)
+
+      const preview = updateRatingAfterGame(
+        player,
+        { rating: botRating, deviation: BOT_OPPONENT_RD },
+        scoreFromResult(nextOutcome.result),
+      )
+
+      setRatingResult({
+        previousRating: player.rating,
+        newRating: preview.rating,
+        ratingChange: preview.change,
+        isProvisional: isProvisionalRating(preview.deviation),
+      })
 
       gameRecordedRef.current = true
       setSaving(true)
@@ -132,7 +168,8 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         userId: user.id,
         opponentName: botName,
         result: nextOutcome.result,
-        userRating: profile.rating,
+        userRating: player.rating,
+        userRatingDeviation: player.deviation,
         opponentRating: botRating,
       })
 
@@ -144,14 +181,27 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         return
       }
 
-      if (result.newRating !== null) {
-        setSavedRating(result.newRating)
+      if (
+        result.newRating !== null &&
+        result.ratingChange !== null &&
+        result.previousRating !== null
+      ) {
+        setRatingResult({
+          previousRating: result.previousRating,
+          newRating: result.newRating,
+          ratingChange: result.ratingChange,
+          isProvisional: result.isProvisional,
+        })
+      }
+
+      if (result.newRating !== null && result.newRatingDeviation !== null) {
+        patchProfileRating(result.newRating, result.newRatingDeviation)
       }
 
       await refreshGames()
       await refreshProfile()
     },
-    [botName, botRating, profile, refreshGames, refreshProfile, user],
+    [botName, botRating, patchProfileRating, profile, refreshGames, refreshProfile, user],
   )
 
   const handleFlag = useCallback(
@@ -180,7 +230,10 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
 
   const requestBotMove = useCallback(async () => {
     const chess = chessRef.current
-    if (chess.isGameOver() || chess.turn() !== botColor) {
+    const activeBotColor = botColorRef.current
+    const activeUserColor = userColorRef.current
+
+    if (chess.isGameOver() || chess.turn() !== activeBotColor) {
       return
     }
 
@@ -197,13 +250,13 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         throw new Error("Bot played an illegal move.")
       }
 
-      applyMove(botColor)
+      applyMove(activeBotColor)
       setFen(chess.fen())
       syncMoves()
 
       if (chess.isGameOver()) {
         setBotThinking(false)
-        await finishGame(resultFromChess(chess, userColor))
+        await finishGame(resultFromChess(chess, activeUserColor))
         return
       }
 
@@ -213,7 +266,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       setEngineError("The bot could not find a move. Try refreshing.")
       setBotThinking(false)
     }
-  }, [applyMove, botColor, botRating, finishGame, syncMoves, userColor])
+  }, [applyMove, botRating, finishGame, syncMoves])
 
   const requestBotMoveRef = useRef(requestBotMove)
   requestBotMoveRef.current = requestBotMove
@@ -229,7 +282,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         setEngineError(null)
         setPhase("playing")
 
-        if (chessRef.current.turn() === botColor) {
+        if (chessRef.current.turn() === botColorRef.current) {
           void requestBotMoveRef.current()
         }
       })
@@ -243,7 +296,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     return () => {
       cancelled = true
     }
-  }, [botColor])
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -383,12 +436,17 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   }
 
   function resetGame() {
+    const nextUserColor = randomUserColor()
+    const nextBotColor = nextUserColor === "w" ? "b" : "w"
+
+    assignUserColor(nextUserColor)
     chessRef.current = new Chess(position.fen)
     setFen(position.fen)
     setMoves([])
     setOutcome(null)
-    setSavedRating(null)
+    setRatingResult(null)
     setSaveError(null)
+    setShowGameOverCard(true)
     setBotThinking(false)
     setControlMessage(null)
     gameRecordedRef.current = false
@@ -399,7 +457,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       .init()
       .then(() => {
         setPhase("playing")
-        if (chessRef.current.turn() === botColor) {
+        if (chessRef.current.turn() === nextBotColor) {
           void requestBotMove()
         }
       })
@@ -414,13 +472,39 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const canTakeBack =
     moves.length >= 2 && chessRef.current.turn() === userColor
 
+  const gameOverRating = useMemo(() => {
+    if (ratingResult) {
+      return ratingResult
+    }
+
+    if (!user || phase !== "game_over" || !outcome) {
+      return null
+    }
+
+    const player = playerRatingSnapshot(profile)
+    const preview = updateRatingAfterGame(
+      player,
+      { rating: botRating, deviation: BOT_OPPONENT_RD },
+      scoreFromResult(outcome.result),
+    )
+
+    return {
+      previousRating: player.rating,
+      newRating: preview.rating,
+      ratingChange: preview.change,
+      isProvisional: isProvisionalRating(preview.deviation),
+    }
+  }, [botRating, outcome, phase, profile, ratingResult, user])
+
   const statusMessage =
     controlMessage ??
-    (botThinking && phase === "playing"
-      ? `${botName} is thinking…`
-      : phase === "playing" && isUserTurn
-        ? "It's your turn!"
-        : null)
+    (phase === "game_over" && gameOverRating
+      ? `${gameOverRating.newRating}${gameOverRating.isProvisional ? "?" : ""} (${formatRatingChange(gameOverRating.ratingChange)})`
+      : botThinking && phase === "playing"
+        ? `${botName} is thinking…`
+        : phase === "playing" && isUserTurn
+          ? "Your move"
+          : null)
 
   if (!authLoading && !user) {
     return (
@@ -469,33 +553,83 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
               </div>
             )}
 
-            {phase === "game_over" && outcome && (
-              <div className="absolute inset-0 flex items-center justify-center bg-cream/80 p-4 backdrop-blur-[2px]">
-                <div className="max-w-xs rounded-xl border border-white/60 bg-white/90 px-5 py-4 text-center shadow-lg">
-                  <p className="font-display text-2xl text-ink">{outcome.reason}</p>
-                  <p className="mt-1 text-sm text-muted">
+            {phase === "game_over" && outcome && showGameOverCard && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-cream/75 p-4 backdrop-blur-[3px]">
+                <div className="relative mx-auto flex w-[22rem] max-w-full flex-col items-center overflow-hidden rounded-2xl border border-white/70 bg-white/55 px-7 py-3 text-center shadow-[0_20px_70px_rgba(28,26,23,0.14),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-gold/14 to-transparent" />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowGameOverCard(false)}
+                    aria-label="Close"
+                    className="absolute right-2.5 top-2.5 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-ink/35 transition-colors duration-200 hover:bg-white/70 hover:text-ink/65"
+                  >
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 10 10"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5"
+                        stroke="currentColor"
+                        strokeWidth="1.15"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+
+                  <p
+                    className={`relative w-full font-display text-xl tracking-[0.04em] ${
+                      outcome.result === "win"
+                        ? "text-emerald-700"
+                        : outcome.result === "loss"
+                          ? "text-red-700"
+                          : "text-ink"
+                    }`}
+                  >
                     {outcome.result === "win"
-                      ? "Nice work — rating updated."
+                      ? "Victory"
                       : outcome.result === "loss"
-                        ? "Tough game — you'll get the next one."
-                        : "Even fight — rating barely moves."}
+                        ? "Defeated"
+                        : "Draw"}
                   </p>
-                  {saving && (
-                    <p className="mt-2 text-xs tracking-[0.12em] text-muted uppercase">
-                      Saving result…
+
+                  {gameOverRating && (
+                    <p className="relative mt-1.5 font-display text-2xl tabular-nums tracking-tight text-ink">
+                      {gameOverRating.newRating}
+                      {gameOverRating.isProvisional && (
+                        <span className="text-gold/80">?</span>
+                      )}
+                      <span
+                        className={`ml-1.5 text-lg ${
+                          gameOverRating.ratingChange > 0
+                            ? "text-emerald-700"
+                            : gameOverRating.ratingChange < 0
+                              ? "text-red-700"
+                              : "text-muted"
+                        }`}
+                      >
+                        ({formatRatingChange(gameOverRating.ratingChange)})
+                      </span>
                     </p>
                   )}
-                  {savedRating !== null && (
-                    <p className="mt-2 text-sm text-emerald-800">
-                      New rating: {savedRating}
+
+                  {saving && (
+                    <p className="relative mt-2 text-[10px] tracking-[0.22em] text-muted uppercase">
+                      Saving
                     </p>
                   )}
                   {saveError && (
-                    <p className="mt-2 text-xs text-red-800/90">{saveError}</p>
+                    <p className="relative mt-2 text-[11px] leading-relaxed text-red-800/80">
+                      {saveError}
+                    </p>
                   )}
+
                   <button
                     type="button"
-                    className={`${ghostButtonClass} mt-4`}
+                    className={`${ghostButtonClass} relative mt-3 w-full`}
                     onClick={resetGame}
                   >
                     Play Again
@@ -515,7 +649,8 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
             opponentActive={isOpponentTurn && phase === "playing"}
             userName={userName}
             userTitle={userTitle}
-            userRating={userRating}
+            userRating={gameOverRating?.newRating ?? userRating}
+            userRatingChange={gameOverRating?.ratingChange ?? null}
             userClockMs={userClockMs}
             userActive={isUserTurn && phase === "playing"}
             userColorLabel={userColorLabel}

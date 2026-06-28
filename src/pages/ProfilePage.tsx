@@ -1,5 +1,6 @@
-import { useRef, useState, type ChangeEvent } from "react"
+import { useEffect, useRef, useState, type ChangeEvent } from "react"
 import { useAuth } from "../context/AuthContext"
+import { formatRatingDisplay } from "../lib/glicko"
 import {
   displayName,
   initials,
@@ -49,7 +50,14 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
     gamesLoading,
     uploadAvatar,
     deleteAccount,
+    refreshProfile,
+    refreshGames,
   } = useAuth()
+
+  useEffect(() => {
+    void refreshProfile()
+    void refreshGames()
+  }, [refreshProfile, refreshGames])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [avatarError, setAvatarError] = useState<string | null>(null)
@@ -180,7 +188,7 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
           <div className="mt-7 grid grid-cols-3 divide-x divide-white/60 rounded-xl border border-white/55 bg-white/30">
             <div className="px-3 py-4 text-center sm:px-5">
               <p className="font-display text-2xl tabular-nums text-ink sm:text-3xl">
-                {profile.rating}
+                {formatRatingDisplay(profile.rating, profile.rating_deviation)}
               </p>
               <p className="mt-1 text-[10px] font-medium tracking-[0.16em] text-muted uppercase">
                 Rating

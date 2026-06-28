@@ -6,6 +6,7 @@ export type Profile = {
   last_name: string
   username: string
   rating: number
+  rating_deviation: number
   skill_level: SkillLevel
   avatar_url: string | null
   created_at: string
@@ -57,6 +58,23 @@ export const SKILL_LEVELS: {
 
 export function ratingForSkillLevel(skillLevel: SkillLevel) {
   return SKILL_LEVELS.find((level) => level.id === skillLevel)?.rating ?? 1200
+}
+
+export function ratingDeviationForSkillLevel(skillLevel: SkillLevel) {
+  if (skillLevel === "beginner") return 450
+  if (skillLevel === "advanced") return 250
+  return 350
+}
+
+export function playerRatingSnapshot(
+  profile: Pick<Profile, "rating" | "rating_deviation" | "skill_level"> | null,
+): { rating: number; deviation: number } {
+  const skillLevel = profile?.skill_level ?? "casual"
+  return {
+    rating: profile?.rating ?? 1200,
+    deviation:
+      profile?.rating_deviation ?? ratingDeviationForSkillLevel(skillLevel),
+  }
 }
 
 export function skillLevelLabel(skillLevel: SkillLevel) {

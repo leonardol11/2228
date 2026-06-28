@@ -5,13 +5,23 @@ type ClockBlockProps = {
   name: string
   title: string
   rating: number
+  ratingChange?: number | null
   clockMs: number
   isActive: boolean
   isUser?: boolean
 }
 
-function ClockBlock({ name, title, rating, clockMs, isActive, isUser }: ClockBlockProps) {
+function ClockBlock({
+  name,
+  title,
+  rating,
+  ratingChange = null,
+  clockMs,
+  isActive,
+  isUser,
+}: ClockBlockProps) {
   const isLowTime = clockMs > 0 && clockMs <= 30_000
+  const showRatingChange = ratingChange !== null
 
   return (
     <div
@@ -31,6 +41,21 @@ function ClockBlock({ name, title, rating, clockMs, isActive, isUser }: ClockBlo
           <p className="truncate text-sm font-medium text-ink">{name}</p>
           <p className="truncate text-[11px] text-muted">
             {title} · {rating}
+            {showRatingChange && (
+              <span
+                className={
+                  ratingChange > 0
+                    ? "text-emerald-700"
+                    : ratingChange < 0
+                      ? "text-red-700"
+                      : "text-muted"
+                }
+              >
+                {" "}
+                {ratingChange > 0 ? "+" : ""}
+                {ratingChange}
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -61,6 +86,7 @@ type GameSidebarProps = {
   userName: string
   userTitle: string
   userRating: number
+  userRatingChange?: number | null
   userClockMs: number
   userActive: boolean
   userColorLabel: string
@@ -84,6 +110,7 @@ export function GameSidebar({
   userName,
   userTitle,
   userRating,
+  userRatingChange = null,
   userClockMs,
   userActive,
   userColorLabel,
@@ -156,6 +183,7 @@ export function GameSidebar({
         name={userName}
         title={userTitle}
         rating={userRating}
+        ratingChange={phase === "game_over" ? userRatingChange : null}
         clockMs={userClockMs}
         isActive={userActive}
         isUser

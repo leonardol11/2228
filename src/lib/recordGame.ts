@@ -1,5 +1,10 @@
 import { supabase } from "./supabase"
-import { ratingChange, scoreFromResult } from "./elo"
+import {
+  BOT_OPPONENT_RD,
+  isProvisionalRating,
+  scoreFromResult,
+  updateRatingAfterGame,
+} from "./glicko"
 import type { GameResult } from "../types/profile"
 
 type RecordGameInput = {
@@ -7,7 +12,40 @@ type RecordGameInput = {
   opponentName: string
   result: GameResult
   userRating: number
+  userRatingDeviation: number
   opponentRating: number
+}
+
+export type RecordGameResult = {
+  error: string | null
+  previousRating: number | null
+  newRating: number | null
+  ratingChange: number | null
+  newRatingDeviation: number | null
+  isProvisional: boolean
+}
+
+function formatRecordGameError(message: string): string {
+  if (message.includes("games") && message.includes("does not exist")) {
+    return "Database not set up. Run supabase/migrations/005_rating_persistence_fix.sql in Supabase."
+  }
+  if (message.includes("permission denied") || message.includes("42501")) {
+    return "Database permissions missing. Run supabase/migrations/005_rating_persistence_fix.sql in Supabase."
+  }
+  if (message.includes("rating_deviation")) {
+    return "Database needs an update. Run supabase/migrations/005_rating_persistence_fix.sql in Supabase."
+  }
+  return "Could not save game result."
+}
+
+function formatProfileUpdateError(message: string): string {
+  if (message.includes("permission denied") || message.includes("42501")) {
+    return "Rating could not be saved. Run supabase/migrations/005_rating_persistence_fix.sql in Supabase."
+  }
+  if (message.includes("rating_deviation")) {
+    return "Rating saved partially. Run supabase/migrations/005_rating_persistence_fix.sql in Supabase."
+  }
+  return "Game saved but rating could not be updated."
 }
 
 export async function recordGame({
@@ -15,32 +53,86 @@ export async function recordGame({
   opponentName,
   result,
   userRating,
+  userRatingDeviation,
   opponentRating,
-}: RecordGameInput): Promise<{ error: string | null; newRating: number | null }> {
-  const delta = ratingChange(userRating, opponentRating, scoreFromResult(result))
-  const newRating = Math.max(100, Math.min(3000, userRating + delta))
+}: RecordGameInput): Promise<RecordGameResult> {
+  const { rating: newRating, deviation: newRatingDeviation, change } =
+    updateRatingAfterGame(
+      { rating: userRating, deviation: userRatingDeviation },
+      { rating: opponentRating, deviation: BOT_OPPONENT_RD },
+      scoreFromResult(result),
+    )
 
   const { error: gameError } = await supabase.from("games").insert({
     user_id: userId,
     opponent_name: opponentName,
     result,
-    rating_change: delta,
+    rating_change: change,
   })
 
   if (gameError) {
     console.error("Failed to record game:", gameError.message)
-    return { error: "Could not save game result.", newRating: null }
+    return {
+      error: formatRecordGameError(gameError.message),
+      previousRating: null,
+      newRating: null,
+      ratingChange: null,
+      newRatingDeviation: null,
+      isProvisional: false,
+    }
   }
 
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ rating: newRating })
+    .update({ rating: newRating, rating_deviation: newRatingDeviation })
     .eq("id", userId)
+
+  if (profileError?.message.includes("rating_deviation")) {
+    const { error: ratingOnlyError } = await supabase
+      .from("profiles")
+      .update({ rating: newRating })
+      .eq("id", userId)
+
+    if (ratingOnlyError) {
+      console.error("Failed to update rating:", ratingOnlyError.message)
+      return {
+        error: formatProfileUpdateError(ratingOnlyError.message),
+        previousRating: userRating,
+        newRating: null,
+        ratingChange: change,
+        newRatingDeviation: null,
+        isProvisional: isProvisionalRating(userRatingDeviation),
+      }
+    }
+
+    return {
+      error: null,
+      previousRating: userRating,
+      newRating,
+      ratingChange: change,
+      newRatingDeviation,
+      isProvisional: isProvisionalRating(newRatingDeviation),
+    }
+  }
 
   if (profileError) {
     console.error("Failed to update rating:", profileError.message)
-    return { error: "Game saved but rating could not be updated.", newRating: null }
+    return {
+      error: formatProfileUpdateError(profileError.message),
+      previousRating: userRating,
+      newRating: null,
+      ratingChange: change,
+      newRatingDeviation: null,
+      isProvisional: isProvisionalRating(userRatingDeviation),
+    }
   }
 
-  return { error: null, newRating }
+  return {
+    error: null,
+    previousRating: userRating,
+    newRating,
+    ratingChange: change,
+    newRatingDeviation,
+    isProvisional: isProvisionalRating(newRatingDeviation),
+  }
 }

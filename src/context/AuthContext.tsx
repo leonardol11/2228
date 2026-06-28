@@ -11,6 +11,7 @@ import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "../lib/supabase"
 import {
   normalizeUsername,
+  ratingDeviationForSkillLevel,
   type Game,
   type Profile,
   type SignUpProfile,
@@ -37,12 +38,57 @@ type AuthContextValue = {
   deleteAccount: () => Promise<{ error: string | null }>
   refreshGames: () => Promise<void>
   refreshProfile: () => Promise<void>
+  patchProfileRating: (rating: number, ratingDeviation: number) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-const PROFILE_FIELDS =
+const CORE_PROFILE_FIELDS =
   "id, first_name, last_name, username, rating, skill_level, avatar_url, created_at"
+
+async function fetchProfile(userId: string): Promise<Profile | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(`${CORE_PROFILE_FIELDS}, rating_deviation`)
+    .eq("id", userId)
+    .maybeSingle()
+
+  if (error) {
+    if (error.message.includes("rating_deviation")) {
+      const fallback = await supabase
+        .from("profiles")
+        .select(CORE_PROFILE_FIELDS)
+        .eq("id", userId)
+        .maybeSingle()
+
+      if (fallback.error || !fallback.data) {
+        console.error(
+          "Failed to load profile:",
+          fallback.error?.message ?? error.message,
+        )
+        return null
+      }
+
+      return {
+        ...fallback.data,
+        rating_deviation: ratingDeviationForSkillLevel(fallback.data.skill_level),
+      }
+    }
+
+    console.error("Failed to load profile:", error.message)
+    return null
+  }
+
+  if (!data) {
+    return null
+  }
+
+  return {
+    ...data,
+    rating_deviation:
+      data.rating_deviation ?? ratingDeviationForSkillLevel(data.skill_level),
+  }
+}
 
 function formatAuthError(message: string) {
   if (message.includes("Invalid login credentials")) {
@@ -64,21 +110,6 @@ function formatAuthError(message: string) {
     return "Please choose a username."
   }
   return message
-}
-
-async function fetchProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(PROFILE_FIELDS)
-    .eq("id", userId)
-    .maybeSingle()
-
-  if (error) {
-    console.error("Failed to load profile:", error.message)
-    return null
-  }
-
-  return data
 }
 
 async function fetchGames(userId: string): Promise<Game[]> {
@@ -116,6 +147,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshProfile = useCallback(async () => {
     await loadProfile(session?.user.id)
   }, [loadProfile, session?.user.id])
+
+  const patchProfileRating = useCallback(
+    (rating: number, ratingDeviation: number) => {
+      setProfile((current) =>
+        current ? { ...current, rating, rating_deviation: ratingDeviation } : current,
+      )
+    },
+    [],
+  )
 
   const refreshGames = useCallback(async () => {
     const userId = session?.user.id
@@ -330,6 +370,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deleteAccount,
       refreshGames,
       refreshProfile,
+      patchProfileRating,
     }),
     [
       session,
@@ -345,6 +386,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deleteAccount,
       refreshGames,
       refreshProfile,
+      patchProfileRating,
     ],
   )
 
