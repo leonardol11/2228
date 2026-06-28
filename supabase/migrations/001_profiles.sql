@@ -24,6 +24,9 @@ create policy "Users can update own profile"
   for update
   using (auth.uid() = id);
 
+grant select on public.profiles to anon, authenticated;
+grant update on public.profiles to authenticated;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql

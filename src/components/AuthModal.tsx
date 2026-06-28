@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from "react"
 import { useAuth } from "../context/AuthContext"
-import { validateUsername } from "../types/profile"
+import {
+  SKILL_LEVELS,
+  validateUsername,
+  type SkillLevel,
+} from "../types/profile"
 
 type AuthModalProps = {
   open: boolean
@@ -8,7 +12,7 @@ type AuthModalProps = {
 }
 
 type Mode = "sign-in" | "sign-up"
-type SignUpStep = 1 | 2
+type SignUpStep = 1 | 2 | 3
 
 const inputClass =
   "w-full rounded-xl border border-white/60 bg-white/70 px-4 py-3 text-sm text-ink placeholder:text-muted/70 shadow-[inset_0_1px_2px_rgba(28,26,23,0.04)] outline-none transition-all duration-300 focus:border-gold/50 focus:bg-white/90 focus:shadow-[0_0_0_3px_rgba(154,123,60,0.12)]"
@@ -22,6 +26,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   const [signUpStep, setSignUpStep] = useState<SignUpStep>(1)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [skillLevel, setSkillLevel] = useState<SkillLevel>("casual")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [username, setUsername] = useState("")
@@ -34,6 +39,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   function resetForm() {
     setEmail("")
     setPassword("")
+    setSkillLevel("casual")
     setFirstName("")
     setLastName("")
     setUsername("")
@@ -56,7 +62,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
     setSuccess(null)
   }
 
-  function handleContinueToProfile(event: FormEvent) {
+  function handleContinueFromCredentials(event: FormEvent) {
     event.preventDefault()
     setError(null)
     setSuccess(null)
@@ -72,6 +78,12 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
     }
 
     setSignUpStep(2)
+  }
+
+  function handleContinueFromSkillLevel(event: FormEvent) {
+    event.preventDefault()
+    setError(null)
+    setSignUpStep(3)
   }
 
   async function handleSignUp(event: FormEvent) {
@@ -102,8 +114,13 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       return
     }
 
-    const available = await checkUsernameAvailable(username)
-    if (!available) {
+    const usernameCheck = await checkUsernameAvailable(username)
+    if (usernameCheck.error) {
+      setError(usernameCheck.error)
+      setSubmitting(false)
+      return
+    }
+    if (!usernameCheck.available) {
       setError("That username is already taken.")
       setSubmitting(false)
       return
@@ -113,19 +130,13 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       firstName: trimmedFirst,
       lastName: trimmedLast,
       username,
+      skillLevel,
     })
 
     setSubmitting(false)
 
     if (result.error) {
       setError(result.error)
-      return
-    }
-
-    if (result.needsEmailConfirmation) {
-      setSuccess("Account created. Check your email to confirm, then sign in.")
-      resetForm()
-      setMode("sign-in")
       return
     }
 
@@ -154,7 +165,9 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       ? "Sign In"
       : signUpStep === 1
         ? "Create Account"
-        : "Your Profile"
+        : signUpStep === 2
+          ? "Your Level"
+          : "Your Profile"
 
   return (
     <div
@@ -221,7 +234,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
             <ModeToggle mode={mode} onSwitch={switchMode} />
           </form>
         ) : signUpStep === 1 ? (
-          <form className="space-y-4 px-6 py-6" onSubmit={handleContinueToProfile}>
+          <form className="space-y-4 px-6 py-6" onSubmit={handleContinueFromCredentials}>
             <div className="space-y-1.5">
               <label htmlFor="signup-email" className={labelClass}>
                 Email
@@ -261,11 +274,69 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
             <ModeToggle mode={mode} onSwitch={switchMode} />
           </form>
+        ) : signUpStep === 2 ? (
+          <form className="space-y-4 px-6 py-6" onSubmit={handleContinueFromSkillLevel}>
+            <p className="text-xs leading-relaxed text-muted">
+              Pick the level that best matches your chess experience. This sets your
+              starting rating.
+            </p>
+
+            <div className="space-y-2">
+              {SKILL_LEVELS.map((level) => {
+                const selected = skillLevel === level.id
+                return (
+                  <button
+                    key={level.id}
+                    type="button"
+                    onClick={() => setSkillLevel(level.id)}
+                    className={`w-full cursor-pointer rounded-xl border px-4 py-3 text-left transition-all duration-300 ${
+                      selected
+                        ? "border-gold/50 bg-gold/10 shadow-[0_0_0_3px_rgba(154,123,60,0.12)]"
+                        : "border-white/70 bg-white/40 hover:bg-white/65"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-ink">{level.label}</p>
+                        <p className="mt-0.5 text-xs text-muted">{level.description}</p>
+                      </div>
+                      <span className="font-display text-xl tabular-nums text-gold">
+                        {level.rating}
+                      </span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {error && <ErrorMessage message={error} />}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="cursor-pointer rounded-full border border-white/70 bg-white/40 px-4 py-3 text-[11px] font-medium tracking-[0.14em] text-ink/70 uppercase transition-all duration-300 hover:bg-white/70 hover:text-ink"
+                onClick={() => {
+                  setSignUpStep(1)
+                  setError(null)
+                }}
+              >
+                Back
+              </button>
+              <SubmitButton submitting={false} label="Continue" className="flex-1" />
+            </div>
+
+            <ModeToggle mode={mode} onSwitch={switchMode} />
+          </form>
         ) : (
           <form className="space-y-4 px-6 py-6" onSubmit={handleSignUp}>
             <p className="text-xs leading-relaxed text-muted">
               Signed up as{" "}
               <span className="font-medium text-ink/80">{email}</span>
+              {" · "}
+              Starting at{" "}
+              <span className="font-medium text-gold">
+                {SKILL_LEVELS.find((level) => level.id === skillLevel)?.rating}
+              </span>
             </p>
 
             <div className="grid grid-cols-2 gap-3">
@@ -330,7 +401,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
                 type="button"
                 className="cursor-pointer rounded-full border border-white/70 bg-white/40 px-4 py-3 text-[11px] font-medium tracking-[0.14em] text-ink/70 uppercase transition-all duration-300 hover:bg-white/70 hover:text-ink"
                 onClick={() => {
-                  setSignUpStep(1)
+                  setSignUpStep(2)
                   setError(null)
                 }}
                 disabled={submitting}
