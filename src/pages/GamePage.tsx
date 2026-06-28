@@ -87,7 +87,7 @@ function applyUciMove(chess: Chess, uci: string): boolean {
 }
 
 export function GamePage({ onExit, onSignIn }: GamePageProps) {
-  const { user, profile, refreshGames, refreshProfile, patchProfileRating, loading: authLoading } = useAuth()
+  const { user, profile, refreshGames, refreshProfile, refreshLeaderboard, patchProfileRating, loading: authLoading } = useAuth()
   const position = weeklyPositions[currentWeekIndex >= 0 ? currentWeekIndex : 0]
   const [userColor, setUserColor] = useState<Color>(randomUserColor)
   const userColorRef = useRef(userColor)
@@ -202,8 +202,9 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
 
       await refreshGames()
       await refreshProfile()
+      void refreshLeaderboard()
     },
-    [botName, botRating, patchProfileRating, position.dateRange, position.title, profile, refreshGames, refreshProfile, user],
+    [botName, botRating, patchProfileRating, position.dateRange, position.title, profile, refreshGames, refreshLeaderboard, refreshProfile, user],
   )
 
   const handleFlag = useCallback(

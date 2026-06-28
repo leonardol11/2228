@@ -1,16 +1,15 @@
 import { useState } from "react"
 import { AuthModal } from "./components/AuthModal"
 import { Header } from "./components/Header"
-import { Leaderboard } from "./components/Leaderboard"
 import { WeeklyBoard } from "./components/WeeklyBoard"
 import { GamePage } from "./pages/GamePage"
+import { LeaderboardPage } from "./pages/LeaderboardPage"
 import { ProfilePage } from "./pages/ProfilePage"
 
-type Page = "home" | "game" | "profile"
+type Page = "home" | "game" | "profile" | "leaderboard"
 
 function App() {
   const [page, setPage] = useState<Page>("home")
-  const [leaderboardOpen, setLeaderboardOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
 
   function goHome() {
@@ -25,10 +24,16 @@ function App() {
     setPage("profile")
   }
 
+  function goLeaderboard() {
+    setPage("leaderboard")
+  }
+
+  const isFixedPage = page === "game" || page === "profile" || page === "leaderboard"
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-cream">
       <Header
-        onLeaderboard={() => setLeaderboardOpen(true)}
+        onLeaderboard={goLeaderboard}
         onStartGame={goGame}
         onSignIn={() => setAuthOpen(true)}
         onProfile={goProfile}
@@ -39,7 +44,7 @@ function App() {
         className={`flex min-h-0 flex-1 justify-center ${
           page === "game"
             ? "items-center overflow-hidden px-6 pb-2 pt-1 md:px-10 sm:pb-3"
-            : page === "profile"
+            : isFixedPage
               ? "items-stretch overflow-hidden bg-cream px-5 pb-4 pt-2 md:px-10 md:pt-3"
               : "items-start overflow-y-auto px-5 pb-8 pt-2 md:px-10 md:pb-10 md:pt-3"
         }`}
@@ -48,15 +53,12 @@ function App() {
           <WeeklyBoard />
         ) : page === "game" ? (
           <GamePage onExit={goHome} onSignIn={() => setAuthOpen(true)} />
-        ) : (
+        ) : page === "profile" ? (
           <ProfilePage onBack={goHome} />
+        ) : (
+          <LeaderboardPage />
         )}
       </main>
-
-      <Leaderboard
-        open={leaderboardOpen}
-        onClose={() => setLeaderboardOpen(false)}
-      />
 
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
     </div>

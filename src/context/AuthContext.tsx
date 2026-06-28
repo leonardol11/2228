@@ -9,6 +9,7 @@ import {
 } from "react"
 import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "../lib/supabase"
+import { fetchLeaderboard, type LeaderboardPlayer } from "../lib/leaderboard"
 import {
   normalizeUsername,
   ratingDeviationForSkillLevel,
@@ -24,6 +25,9 @@ type AuthContextValue = {
   loading: boolean
   games: Game[]
   gamesLoading: boolean
+  leaderboard: LeaderboardPlayer[]
+  leaderboardLoaded: boolean
+  refreshLeaderboard: () => Promise<void>
   signUp: (
     email: string,
     password: string,
@@ -155,6 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [games, setGames] = useState<Game[]>([])
+  const [leaderboard, setLeaderboard] = useState<LeaderboardPlayer[]>([])
+  const [leaderboardLoaded, setLeaderboardLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [gamesLoading, setGamesLoading] = useState(false)
 
@@ -193,6 +199,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setGames(nextGames)
     setGamesLoading(false)
   }, [session?.user.id])
+
+  const refreshLeaderboard = useCallback(async () => {
+    const rows = await fetchLeaderboard()
+    setLeaderboard(rows)
+    setLeaderboardLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    void refreshLeaderboard()
+  }, [refreshLeaderboard])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: current } }) => {
@@ -386,6 +402,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       games,
       gamesLoading,
+      leaderboard,
+      leaderboardLoaded,
       signUp,
       signIn,
       signOut,
@@ -394,6 +412,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deleteAccount,
       refreshGames,
       refreshProfile,
+      refreshLeaderboard,
       patchProfileRating,
     }),
     [
@@ -402,6 +421,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       games,
       gamesLoading,
+      leaderboard,
+      leaderboardLoaded,
       signUp,
       signIn,
       signOut,
@@ -410,6 +431,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deleteAccount,
       refreshGames,
       refreshProfile,
+      refreshLeaderboard,
       patchProfileRating,
     ],
   )
