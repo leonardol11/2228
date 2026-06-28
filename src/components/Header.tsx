@@ -24,7 +24,7 @@ export function Header({
   const { user, loading, signOut } = useAuth()
 
   return (
-    <header className="flex shrink-0 flex-col items-center gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-10 md:py-5">
+    <header className="flex w-full max-w-full shrink-0 flex-col items-center gap-3 overflow-x-hidden px-4 py-4 md:flex-row md:items-center md:justify-between md:px-10 md:py-5">
       <button
         type="button"
         onClick={onLogo}
@@ -33,7 +33,7 @@ export function Header({
         2228
       </button>
 
-      <nav className="flex max-w-full flex-nowrap items-center justify-center gap-0.5 rounded-full border border-white/70 bg-white/35 p-0.5 shadow-[0_8px_40px_rgba(28,26,23,0.07),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl sm:gap-2 sm:p-1.5">
+      <nav className="flex w-full max-w-[calc(100vw-2rem)] flex-nowrap items-center justify-center gap-0.5 rounded-full border border-white/70 bg-white/35 p-0.5 shadow-[0_8px_40px_rgba(28,26,23,0.07),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
         <button type="button" className={primaryClass} onClick={onStartGame}>
           <span className="sm:hidden">Play</span>
           <span className="hidden sm:inline">Start Game</span>

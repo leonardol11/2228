@@ -32,7 +32,7 @@ const notationStyles = {
   },
 }
 
-const boardSize = "min(70vmin, 580px)"
+const boardSize = "min(70vmin, calc(100% - 1rem), 580px)"
 
 const navButtonClass =
   "flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-white/50 text-ink/50 transition-all duration-300 hover:border-border-strong hover:bg-white/80 hover:text-ink disabled:cursor-default disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-white/50 disabled:hover:text-ink/50"
