@@ -1,32 +1,59 @@
-# React + TypeScript + Vite
+# 2228 Chess
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Play ranked chess against a bot that scales to your rating. Sign in to track your Glicko rating, climb the leaderboard, and replay famous positions from chess history.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Ranked bot games** — Stockfish-powered opponent with strength tied to your rating (5+2 clock)
+- **Glicko ratings** — Provisional ratings for new players, with rating changes saved after each game
+- **Leaderboard** — Live rankings from Supabase
+- **Profiles** — Game history and rating stats for signed-in players
+- **Weekly position** — Home page features a famous historical game to step through move by move
+- **PWA support** — Add to home screen for an app-style icon and standalone launch
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vite.dev/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [chess.js](https://github.com/jhlywa/chess.js) + [react-chessboard](https://github.com/Clariity/react-chessboard)
+- [Stockfish](https://stockfishchess.org/) (in-browser engine)
+- [Supabase](https://supabase.com/) (auth, profiles, ratings, game records)
 
-## Expanding the Oxlint configuration
+## Getting started
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+### Prerequisites
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+- Node.js 18+
+- A [Supabase](https://supabase.com/) project with the migrations in `supabase/migrations/` applied
+
+### Setup
+
+```bash
+npm install
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Create a `.env` file in the project root:
+
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+Run the dev server:
+
+```bash
+npm run dev
+```
+
+### Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start local dev server |
+| `npm run build` | Type-check and build for production |
+| `npm run preview` | Preview the production build |
+| `npm run lint` | Run Oxlint |
+
+## Database
+
+SQL migrations live in `supabase/migrations/`. Apply them to your Supabase project (via the SQL editor or Supabase CLI) before using auth, ratings, or game history.
