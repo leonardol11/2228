@@ -8,8 +8,11 @@ type HeaderProps = {
   onLogo: () => void
 }
 
+const primaryClass =
+  "cursor-pointer shrink-0 rounded-full bg-gradient-to-b from-[#d4b76a] via-[#b8973c] to-[#8f6f2e] px-2.5 py-1.5 text-[9px] font-medium tracking-[0.08em] text-white uppercase shadow-[0_4px_24px_rgba(154,123,60,0.38),inset_0_1px_0_rgba(255,255,255,0.35)] transition-all duration-300 hover:shadow-[0_6px_32px_rgba(154,123,60,0.5),inset_0_1px_0_rgba(255,255,255,0.45)] hover:brightness-105 sm:px-5 sm:py-2.5 sm:text-[11px] sm:tracking-[0.14em]"
+
 const ghostClass =
-  "cursor-pointer rounded-full px-3 py-2 text-[10px] font-medium tracking-[0.14em] text-ink/65 uppercase transition-all duration-300 hover:bg-white/60 hover:text-ink hover:shadow-[inset_0_0_0_1px_rgba(154,123,60,0.2)] sm:px-4 sm:py-2.5 sm:text-[11px]"
+  "cursor-pointer shrink-0 rounded-full px-2 py-1.5 text-[9px] font-medium tracking-[0.08em] text-ink/65 uppercase transition-all duration-300 hover:bg-white/60 hover:text-ink hover:shadow-[inset_0_0_0_1px_rgba(154,123,60,0.2)] sm:px-4 sm:py-2.5 sm:text-[11px] sm:tracking-[0.14em]"
 
 export function Header({
   onLeaderboard,
@@ -21,7 +24,7 @@ export function Header({
   const { user, loading, signOut } = useAuth()
 
   return (
-    <header className="flex shrink-0 flex-col items-center gap-3 px-6 py-4 md:flex-row md:items-center md:justify-between md:px-10 md:py-5">
+    <header className="flex shrink-0 flex-col items-center gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-10 md:py-5">
       <button
         type="button"
         onClick={onLogo}
@@ -30,17 +33,15 @@ export function Header({
         2228
       </button>
 
-      <nav className="flex flex-wrap items-center justify-center gap-1 rounded-full border border-white/70 bg-white/35 p-1 shadow-[0_8px_40px_rgba(28,26,23,0.07),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl sm:gap-2 sm:p-1.5">
-        <button
-          type="button"
-          className="cursor-pointer rounded-full bg-gradient-to-b from-[#d4b76a] via-[#b8973c] to-[#8f6f2e] px-4 py-2 text-[10px] font-medium tracking-[0.14em] text-white uppercase shadow-[0_4px_24px_rgba(154,123,60,0.38),inset_0_1px_0_rgba(255,255,255,0.35)] transition-all duration-300 hover:shadow-[0_6px_32px_rgba(154,123,60,0.5),inset_0_1px_0_rgba(255,255,255,0.45)] hover:brightness-105 sm:px-5 sm:py-2.5 sm:text-[11px]"
-          onClick={onStartGame}
-        >
-          Start Game
+      <nav className="flex max-w-full flex-nowrap items-center justify-center gap-0.5 rounded-full border border-white/70 bg-white/35 p-0.5 shadow-[0_8px_40px_rgba(28,26,23,0.07),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl sm:gap-2 sm:p-1.5">
+        <button type="button" className={primaryClass} onClick={onStartGame}>
+          <span className="sm:hidden">Play</span>
+          <span className="hidden sm:inline">Start Game</span>
         </button>
 
         <button type="button" className={ghostClass} onClick={onLeaderboard}>
-          Leaderboard
+          <span className="sm:hidden">Ranks</span>
+          <span className="hidden sm:inline">Leaderboard</span>
         </button>
 
         {!loading && user ? (
@@ -53,7 +54,8 @@ export function Header({
               className={ghostClass}
               onClick={() => void signOut()}
             >
-              Sign Out
+              <span className="sm:hidden">Out</span>
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
           </>
         ) : (
@@ -63,7 +65,12 @@ export function Header({
             onClick={onSignIn}
             disabled={loading}
           >
-            {loading ? "…" : "Sign In"}
+            {loading ? "…" : (
+              <>
+                <span className="sm:hidden">In</span>
+                <span className="hidden sm:inline">Sign In</span>
+              </>
+            )}
           </button>
         )}
       </nav>
