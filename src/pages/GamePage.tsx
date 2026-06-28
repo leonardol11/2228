@@ -530,7 +530,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
 
   return (
     <section className="flex h-full w-full min-h-0 flex-col">
-      <div className="grid min-h-0 flex-1 grid-cols-1 items-center gap-3 overflow-y-auto lg:grid-cols-[1fr_auto_1fr] lg:overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:overflow-hidden">
         <aside className="hidden h-[min(calc(100dvh-7rem),820px)] min-h-0 min-w-0 flex-col lg:flex">
           <GameChat
             botName={botName}
@@ -542,8 +542,8 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
           />
         </aside>
 
-        <div className="flex min-h-0 min-w-0 items-center justify-center justify-self-center">
-          <div className="relative aspect-square h-[min(calc(100vw-3rem),calc(100dvh-30rem),820px)] w-[min(calc(100vw-3rem),calc(100dvh-30rem),820px)] shrink-0 md:h-[min(calc(100vw-5rem),calc(100dvh-30rem),820px)] md:w-[min(calc(100vw-5rem),calc(100dvh-30rem),820px)] lg:h-[min(calc(100dvh-7rem),820px)] lg:w-[min(calc(100dvh-7rem),820px)]">
+        <div className="flex min-h-0 min-w-0 shrink-0 items-center justify-center justify-self-center lg:shrink">
+          <div className="relative aspect-square h-[min(calc(100vw-2.5rem),calc(100dvh-22rem))] w-[min(calc(100vw-2.5rem),calc(100dvh-22rem))] shrink-0 md:h-[min(calc(100vw-5rem),calc(100dvh-30rem),820px)] md:w-[min(calc(100vw-5rem),calc(100dvh-30rem),820px)] lg:h-[min(calc(100dvh-7rem),820px)] lg:w-[min(calc(100dvh-7rem),820px)]">
             <div className="absolute inset-0 border border-border bg-surface p-1 shadow-[0_8px_40px_rgba(28,26,23,0.08)]">
               <Chessboard options={chessboardOptions} />
             </div>
@@ -643,7 +643,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
           </div>
         </div>
 
-        <aside className="flex h-52 min-h-0 min-w-0 shrink-0 flex-col lg:h-[min(calc(100dvh-7rem),820px)]">
+        <aside className="flex w-full min-h-0 min-w-0 shrink-0 flex-col pb-2 lg:h-[min(calc(100dvh-7rem),820px)] lg:pb-0">
           <GameSidebar
             opponentName={botName}
             opponentTitle={botTitle}
@@ -666,17 +666,6 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
             onOfferDraw={handleOfferDraw}
             onTakeBack={handleTakeBack}
             onResign={handleResign}
-          />
-        </aside>
-
-        <aside className="flex h-52 min-h-0 shrink-0 flex-col lg:hidden">
-          <GameChat
-            botName={botName}
-            userName={userName}
-            clockLabel={CLOCK_LABEL}
-            signedIn={Boolean(user)}
-            onSignIn={onSignIn}
-            gameOver={phase === "game_over"}
           />
         </aside>
       </div>

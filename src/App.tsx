@@ -43,7 +43,7 @@ function App() {
       <main
         className={`flex min-h-0 flex-1 justify-center ${
           page === "game"
-            ? "items-center overflow-hidden px-6 pb-2 pt-1 md:px-10 sm:pb-3"
+            ? "items-start overflow-y-auto px-4 pb-3 pt-1 md:items-center md:overflow-hidden md:px-6 md:pb-2 lg:px-10 sm:pb-3"
             : isFixedPage
               ? "items-stretch overflow-hidden bg-cream px-5 pb-4 pt-2 md:px-10 md:pt-3"
               : "items-start overflow-y-auto px-5 pb-8 pt-2 md:px-10 md:pb-10 md:pt-3"

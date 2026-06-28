@@ -21,7 +21,7 @@ export function Header({
   const { user, loading, signOut } = useAuth()
 
   return (
-    <header className="flex shrink-0 items-center justify-between px-6 py-5 md:px-10 md:py-5">
+    <header className="flex shrink-0 flex-col items-center gap-3 px-6 py-4 md:flex-row md:items-center md:justify-between md:px-10 md:py-5">
       <button
         type="button"
         onClick={onLogo}
@@ -30,7 +30,7 @@ export function Header({
         2228
       </button>
 
-      <nav className="flex items-center gap-1 rounded-full border border-white/70 bg-white/35 p-1 shadow-[0_8px_40px_rgba(28,26,23,0.07),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl sm:gap-2 sm:p-1.5">
+      <nav className="flex flex-wrap items-center justify-center gap-1 rounded-full border border-white/70 bg-white/35 p-1 shadow-[0_8px_40px_rgba(28,26,23,0.07),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl sm:gap-2 sm:p-1.5">
         <button
           type="button"
           className="cursor-pointer rounded-full bg-gradient-to-b from-[#d4b76a] via-[#b8973c] to-[#8f6f2e] px-4 py-2 text-[10px] font-medium tracking-[0.14em] text-white uppercase shadow-[0_4px_24px_rgba(154,123,60,0.38),inset_0_1px_0_rgba(255,255,255,0.35)] transition-all duration-300 hover:shadow-[0_6px_32px_rgba(154,123,60,0.5),inset_0_1px_0_rgba(255,255,255,0.45)] hover:brightness-105 sm:px-5 sm:py-2.5 sm:text-[11px]"

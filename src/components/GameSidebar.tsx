@@ -9,6 +9,7 @@ type ClockBlockProps = {
   clockMs: number
   isActive: boolean
   isUser?: boolean
+  className?: string
 }
 
 function ClockBlock({
@@ -19,6 +20,7 @@ function ClockBlock({
   clockMs,
   isActive,
   isUser,
+  className = "",
 }: ClockBlockProps) {
   const isLowTime = clockMs > 0 && clockMs <= 30_000
   const showRatingChange = ratingChange !== null
@@ -29,7 +31,7 @@ function ClockBlock({
         isActive
           ? "bg-white/60 shadow-[inset_0_0_0_1px_rgba(154,123,60,0.35)]"
           : "bg-white/35"
-      }`}
+      } ${className}`}
     >
       <div className="flex min-w-0 items-center gap-2">
         <span
@@ -134,20 +136,46 @@ export function GameSidebar({
   const displayStatus = statusMessage ?? defaultStatus
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-2">
+    <div className="flex w-full flex-col gap-2 lg:h-full lg:min-h-0">
       <ClockBlock
         name={opponentName}
         title={opponentTitle}
         rating={opponentRating}
         clockMs={opponentClockMs}
         isActive={opponentActive}
+        className="hidden lg:flex"
       />
 
-      <div className="min-h-0 flex-1">
+      <div className="h-36 min-h-0 shrink-0 lg:h-auto lg:min-h-0 lg:flex-1">
         <MoveList moves={moves} />
       </div>
 
       <div className="shrink-0 rounded-xl border border-white/55 bg-white/35 p-3">
+        <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-ink">{opponentName}</p>
+            <p
+              className={`font-mono text-lg tabular-nums leading-none ${
+                opponentClockMs > 0 && opponentClockMs <= 30_000
+                  ? "text-red-700"
+                  : "text-ink"
+              } ${opponentActive ? "font-medium" : "text-ink/70"}`}
+            >
+              {formatClockDisplay(opponentClockMs)}
+            </p>
+          </div>
+          <div className="min-w-0 text-right">
+            <p className="truncate text-xs font-medium text-ink">{userName}</p>
+            <p
+              className={`font-mono text-lg tabular-nums leading-none ${
+                userClockMs > 0 && userClockMs <= 30_000 ? "text-red-700" : "text-ink"
+              } ${userActive ? "font-medium" : "text-ink/70"}`}
+            >
+              {formatClockDisplay(userClockMs)}
+            </p>
+          </div>
+        </div>
+
         <div className="flex items-start gap-2 text-sm text-ink/80">
           <span className="mt-0.5 shrink-0 text-muted">ⓘ</span>
           <p className="leading-snug">{displayStatus}</p>
@@ -187,6 +215,7 @@ export function GameSidebar({
         clockMs={userClockMs}
         isActive={userActive}
         isUser
+        className="hidden lg:flex"
       />
     </div>
   )
