@@ -65,12 +65,7 @@ export function Header({
             onClick={onSignIn}
             disabled={loading}
           >
-            {loading ? "…" : (
-              <>
-                <span className="sm:hidden">In</span>
-                <span className="hidden sm:inline">Sign In</span>
-              </>
-            )}
+            {loading ? "…" : "Sign In"}
           </button>
         )}
       </nav>

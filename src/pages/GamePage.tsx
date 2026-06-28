@@ -542,8 +542,8 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
           />
         </aside>
 
-        <div className="flex min-h-0 min-w-0 shrink-0 items-center justify-center justify-self-center lg:shrink">
-          <div className="relative aspect-square h-[min(calc(100vw-2.5rem),calc(100dvh-22rem))] w-[min(calc(100vw-2.5rem),calc(100dvh-22rem))] shrink-0 md:h-[min(calc(100vw-5rem),calc(100dvh-30rem),820px)] md:w-[min(calc(100vw-5rem),calc(100dvh-30rem),820px)] lg:h-[min(calc(100dvh-7rem),820px)] lg:w-[min(calc(100dvh-7rem),820px)]">
+        <div className="flex min-h-0 min-w-0 shrink-0 items-center justify-center justify-self-center pt-10 lg:shrink lg:pt-0">
+          <div className="relative aspect-square h-[min(calc(100vw-2.5rem),calc(100dvh-16rem))] w-[min(calc(100vw-2.5rem),calc(100dvh-16rem))] shrink-0 md:h-[min(calc(100vw-5rem),calc(100dvh-30rem),820px)] md:w-[min(calc(100vw-5rem),calc(100dvh-30rem),820px)] lg:h-[min(calc(100dvh-7rem),820px)] lg:w-[min(calc(100dvh-7rem),820px)]">
             <div className="absolute inset-0 border border-border bg-surface p-1 shadow-[0_8px_40px_rgba(28,26,23,0.08)]">
               <Chessboard options={chessboardOptions} />
             </div>

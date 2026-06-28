@@ -146,14 +146,14 @@ export function GameSidebar({
         className="hidden lg:flex"
       />
 
-      <div className="h-36 min-h-0 shrink-0 lg:h-auto lg:min-h-0 lg:flex-1">
+      <div className="hidden h-36 min-h-0 shrink-0 lg:block lg:h-auto lg:min-h-0 lg:flex-1">
         <MoveList moves={moves} />
       </div>
 
       <div className="shrink-0 rounded-xl border border-white/55 bg-white/35 p-3">
         <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
           <div className="min-w-0">
-            <p className="truncate text-xs font-medium text-ink">{opponentName}</p>
+            <p className="truncate text-sm font-medium text-ink">{opponentName}</p>
             <p
               className={`font-mono text-lg tabular-nums leading-none ${
                 opponentClockMs > 0 && opponentClockMs <= 30_000
@@ -165,7 +165,7 @@ export function GameSidebar({
             </p>
           </div>
           <div className="min-w-0 text-right">
-            <p className="truncate text-xs font-medium text-ink">{userName}</p>
+            <p className="truncate text-sm font-medium text-ink">{userName}</p>
             <p
               className={`font-mono text-lg tabular-nums leading-none ${
                 userClockMs > 0 && userClockMs <= 30_000 ? "text-red-700" : "text-ink"
@@ -176,7 +176,7 @@ export function GameSidebar({
           </div>
         </div>
 
-        <div className="flex items-start gap-2 text-sm text-ink/80">
+        <div className="flex items-start gap-2 text-base text-ink/80 lg:text-sm">
           <span className="mt-0.5 shrink-0 text-muted">ⓘ</span>
           <p className="leading-snug">{displayStatus}</p>
         </div>
