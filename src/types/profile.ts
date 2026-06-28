@@ -28,6 +28,8 @@ export type Game = {
   result: GameResult
   rating_change: number
   played_at: string
+  position_title: string | null
+  position_date: string | null
 }
 
 export const SKILL_LEVELS: {

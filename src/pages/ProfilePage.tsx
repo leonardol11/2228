@@ -13,7 +13,7 @@ type ProfilePageProps = {
 }
 
 const cardClass =
-  "overflow-hidden rounded-2xl border border-white/65 bg-white/50 shadow-[0_16px_60px_rgba(28,26,23,0.07),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl"
+  "overflow-hidden rounded-2xl border border-white/65 bg-white/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl"
 
 function resultLabel(result: GameResult) {
   if (result === "win") return "Win"
@@ -113,9 +113,9 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 pb-4">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col gap-4 overflow-hidden bg-cream">
       {/* Identity */}
-      <section className={`${cardClass} relative`}>
+      <section className={`${cardClass} relative shrink-0`}>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-gold/10 to-transparent" />
 
         <div className="relative px-6 py-8 sm:px-8">
@@ -215,8 +215,8 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
       </section>
 
       {/* Match history */}
-      <section className={`${cardClass}`}>
-        <div className="border-b border-white/50 px-6 py-4 sm:px-8">
+      <section className={`${cardClass} flex min-h-0 flex-1 flex-col overflow-hidden`}>
+        <div className="shrink-0 border-b border-white/50 px-6 py-4 sm:px-8">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-xl text-ink">Match History</h2>
             {gamesLoading && (
@@ -227,56 +227,72 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
           </div>
         </div>
 
-        {games.length === 0 && !gamesLoading ? (
-          <div className="px-6 py-14 text-center sm:px-8">
-            <p className="text-sm text-muted">No games played yet.</p>
-            <p className="mt-1 text-xs text-muted/70">
-              Results will show up here after your first match.
-            </p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-white/40">
-            {games.map((game) => (
-              <li
-                key={game.id}
-                className="flex items-center justify-between gap-4 px-6 py-3.5 sm:px-8"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-ink">
-                    vs {game.opponent_name}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {formatPlayedAt(game.played_at)}
-                  </p>
-                </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {games.length === 0 && !gamesLoading ? (
+            <div className="px-6 py-14 text-center sm:px-8">
+              <p className="text-sm text-muted">No games played yet.</p>
+              <p className="mt-1 text-xs text-muted/70">
+                Results will show up here after your first match.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-white/40">
+              {games.map((game) => (
+                <li
+                  key={game.id}
+                  className="flex items-center justify-between gap-4 px-6 py-3.5 sm:px-8"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-ink">
+                      {game.position_title ? (
+                        <>
+                          <span className="font-medium">{game.position_title}</span>
+                          <span className="text-muted">
+                            {" "}
+                            · {game.position_date ?? formatPlayedAt(game.played_at)} ·
+                            vs {game.opponent_name}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          vs {game.opponent_name}
+                          <span className="text-muted">
+                            {" "}
+                            · {formatPlayedAt(game.played_at)}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
 
-                <div className="flex shrink-0 items-center gap-4">
-                  <span
-                    className={`text-xs font-medium tracking-wide uppercase ${resultStyles(game.result)}`}
-                  >
-                    {resultLabel(game.result)}
-                  </span>
-                  {game.rating_change !== 0 ? (
+                  <div className="flex shrink-0 items-center gap-4">
                     <span
-                      className={`w-10 text-right text-sm tabular-nums ${
-                        game.rating_change > 0 ? "text-emerald-700" : "text-red-700"
-                      }`}
+                      className={`text-xs font-medium tracking-wide uppercase ${resultStyles(game.result)}`}
                     >
-                      {game.rating_change > 0 ? "+" : ""}
-                      {game.rating_change}
+                      {resultLabel(game.result)}
                     </span>
-                  ) : (
-                    <span className="w-10 text-right text-sm text-muted">—</span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                    {game.rating_change !== 0 ? (
+                      <span
+                        className={`w-10 text-right text-sm tabular-nums ${
+                          game.rating_change > 0 ? "text-emerald-700" : "text-red-700"
+                        }`}
+                      >
+                        {game.rating_change > 0 ? "+" : ""}
+                        {game.rating_change}
+                      </span>
+                    ) : (
+                      <span className="w-10 text-right text-sm text-muted">—</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
       {/* Account */}
-      <div className="px-1">
+      <div className="shrink-0 px-1">
         {!showDeleteConfirm ? (
           <button
             type="button"

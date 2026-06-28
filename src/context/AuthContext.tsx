@@ -115,11 +115,35 @@ function formatAuthError(message: string) {
 async function fetchGames(userId: string): Promise<Game[]> {
   const { data, error } = await supabase
     .from("games")
-    .select("id, user_id, opponent_name, result, rating_change, played_at")
+    .select(
+      "id, user_id, opponent_name, result, rating_change, played_at, position_title, position_date",
+    )
     .eq("user_id", userId)
     .order("played_at", { ascending: false })
 
   if (error) {
+    if (
+      error.message.includes("position_title") ||
+      error.message.includes("position_date")
+    ) {
+      const fallback = await supabase
+        .from("games")
+        .select("id, user_id, opponent_name, result, rating_change, played_at")
+        .eq("user_id", userId)
+        .order("played_at", { ascending: false })
+
+      if (fallback.error) {
+        console.error("Failed to load games:", fallback.error.message)
+        return []
+      }
+
+      return (fallback.data ?? []).map((game) => ({
+        ...game,
+        position_title: null,
+        position_date: null,
+      }))
+    }
+
     console.error("Failed to load games:", error.message)
     return []
   }

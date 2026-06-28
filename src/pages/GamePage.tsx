@@ -171,6 +171,8 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         userRating: player.rating,
         userRatingDeviation: player.deviation,
         opponentRating: botRating,
+        positionTitle: position.title,
+        positionDate: position.dateRange,
       })
 
       setSaving(false)
@@ -201,7 +203,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       await refreshGames()
       await refreshProfile()
     },
-    [botName, botRating, patchProfileRating, profile, refreshGames, refreshProfile, user],
+    [botName, botRating, patchProfileRating, position.dateRange, position.title, profile, refreshGames, refreshProfile, user],
   )
 
   const handleFlag = useCallback(

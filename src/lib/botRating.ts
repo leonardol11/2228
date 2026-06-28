@@ -15,15 +15,15 @@ type RatingTier = {
 }
 
 const RATING_TIERS: RatingTier[] = [
-  { min: 0, title: "Novice", botName: "Jamie" },
-  { min: 400, title: "Beginner", botName: "Chris" },
-  { min: 800, title: "Intermediate", botName: "Taylor" },
-  { min: 1000, title: "Club Player", botName: "Jordan" },
-  { min: 1200, title: "Strong Club", botName: "Elena" },
-  { min: 1400, title: "Expert", botName: "Marcus" },
-  { min: 1600, title: "Master", botName: "Sofia" },
-  { min: 1800, title: "International Master", botName: "David" },
-  { min: 2000, title: "Grandmaster", botName: "Anna" },
+  { min: 0, title: "Novice", botName: "Jamie Chen" },
+  { min: 400, title: "Beginner", botName: "Chris Rivera" },
+  { min: 800, title: "Intermediate", botName: "Taylor Brooks" },
+  { min: 1000, title: "Club Player", botName: "Jordan Hayes" },
+  { min: 1200, title: "Strong Club", botName: "Elena Vasquez" },
+  { min: 1400, title: "Expert", botName: "Marcus Webb" },
+  { min: 1600, title: "Master", botName: "Sofia Laurent" },
+  { min: 1800, title: "International Master", botName: "David Okonkwo" },
+  { min: 2000, title: "Grandmaster", botName: "Anna Berg" },
 ]
 
 export function ratingTierFor(rating: number): RatingTier {

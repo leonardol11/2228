@@ -14,6 +14,8 @@ type RecordGameInput = {
   userRating: number
   userRatingDeviation: number
   opponentRating: number
+  positionTitle: string
+  positionDate: string
 }
 
 export type RecordGameResult = {
@@ -55,6 +57,8 @@ export async function recordGame({
   userRating,
   userRatingDeviation,
   opponentRating,
+  positionTitle,
+  positionDate,
 }: RecordGameInput): Promise<RecordGameResult> {
   const { rating: newRating, deviation: newRatingDeviation, change } =
     updateRatingAfterGame(
@@ -63,12 +67,29 @@ export async function recordGame({
       scoreFromResult(result),
     )
 
-  const { error: gameError } = await supabase.from("games").insert({
+  const gameRow = {
     user_id: userId,
     opponent_name: opponentName,
     result,
     rating_change: change,
-  })
+    position_title: positionTitle,
+    position_date: positionDate,
+  }
+
+  let { error: gameError } = await supabase.from("games").insert(gameRow)
+
+  if (
+    gameError?.message.includes("position_title") ||
+    gameError?.message.includes("position_date")
+  ) {
+    const fallback = await supabase.from("games").insert({
+      user_id: userId,
+      opponent_name: opponentName,
+      result,
+      rating_change: change,
+    })
+    gameError = fallback.error
+  }
 
   if (gameError) {
     console.error("Failed to record game:", gameError.message)
