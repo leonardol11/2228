@@ -529,8 +529,8 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   }
 
   return (
-    <section className="flex h-full w-full min-h-0 max-w-full flex-col overflow-x-hidden">
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto overflow-x-hidden lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-3 lg:overflow-hidden">
+    <section className="flex h-full w-full min-h-0 flex-col">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:overflow-hidden">
         <aside className="hidden h-[min(calc(100dvh-7rem),820px)] min-h-0 min-w-0 flex-col lg:flex">
           <GameChat
             botName={botName}
@@ -542,8 +542,8 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
           />
         </aside>
 
-        <div className="flex w-full max-w-full min-h-0 min-w-0 shrink-0 items-center justify-center justify-self-center pt-2 lg:shrink lg:pt-0">
-          <div className="relative mx-auto aspect-square w-full max-w-[min(100%,calc(100dvh-20rem))] shrink-0 lg:max-w-[min(calc(100dvh-7rem),820px)]">
+        <div className="flex min-h-0 min-w-0 shrink-0 items-center justify-center justify-self-center pt-10 lg:shrink lg:pt-0">
+          <div className="relative aspect-square h-[min(calc(100vw-2.5rem),calc(100dvh-16rem))] w-[min(calc(100vw-2.5rem),calc(100dvh-16rem))] shrink-0 md:h-[min(calc(100vw-5rem),calc(100dvh-30rem),820px)] md:w-[min(calc(100vw-5rem),calc(100dvh-30rem),820px)] lg:h-[min(calc(100dvh-7rem),820px)] lg:w-[min(calc(100dvh-7rem),820px)]">
             <div className="absolute inset-0 border border-border bg-surface p-1 shadow-[0_8px_40px_rgba(28,26,23,0.08)]">
               <Chessboard options={chessboardOptions} />
             </div>

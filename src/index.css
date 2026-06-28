@@ -22,20 +22,14 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
   overflow: hidden;
-  overflow-x: hidden;
   height: 100%;
-  width: 100%;
 }
 
 body {
   margin: 0;
   height: 100%;
-  width: 100%;
   overflow: hidden;
-  overflow-x: hidden;
   background-color: var(--color-cream);
   color: var(--color-ink);
   font-family: var(--font-sans);
@@ -44,8 +38,5 @@ body {
 
 #root {
   height: 100dvh;
-  width: 100%;
-  max-width: 100%;
   overflow: hidden;
-  overflow-x: hidden;
 }

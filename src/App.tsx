@@ -31,7 +31,7 @@ function App() {
   const isFixedPage = page === "game" || page === "profile" || page === "leaderboard"
 
   return (
-    <div className="flex h-dvh max-w-full flex-col overflow-hidden overflow-x-hidden bg-cream">
+    <div className="flex h-dvh flex-col overflow-hidden bg-cream">
       <Header
         onLeaderboard={goLeaderboard}
         onStartGame={goGame}
