@@ -1,5 +1,5 @@
 {
-  "name": "weeklychess",
+  "name": "2228-chess",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,14 +7,16 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "node scripts/copy-stockfish.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
     "chess.js": "^1.4.0",
     "react": "^19.2.7",
     "react-chessboard": "^5.10.0",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "stockfish": "^18.0.8"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.1",

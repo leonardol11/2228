@@ -36,6 +36,7 @@ type AuthContextValue = {
   uploadAvatar: (file: File) => Promise<{ error: string | null }>
   deleteAccount: () => Promise<{ error: string | null }>
   refreshGames: () => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -111,6 +112,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const nextProfile = await fetchProfile(userId)
     setProfile(nextProfile)
   }, [])
+
+  const refreshProfile = useCallback(async () => {
+    await loadProfile(session?.user.id)
+  }, [loadProfile, session?.user.id])
 
   const refreshGames = useCallback(async () => {
     const userId = session?.user.id
@@ -324,6 +329,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       uploadAvatar,
       deleteAccount,
       refreshGames,
+      refreshProfile,
     }),
     [
       session,
@@ -338,6 +344,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       uploadAvatar,
       deleteAccount,
       refreshGames,
+      refreshProfile,
     ],
   )
 
