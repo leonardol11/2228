@@ -53,25 +53,26 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable
 }
 
-function dateDaysAgo(days: number): Date {
+function dateAtOffset(offsetDays: number): Date {
   const date = new Date()
-  date.setUTCDate(date.getUTCDate() - days)
+  date.setUTCDate(date.getUTCDate() + offsetDays)
   return date
 }
 
+const MAX_DAY_OFFSET = 1 // 0 = today, 1 = tomorrow
+
 export function DailyBoard() {
-  // How many days back from today we're viewing. 0 = today's position.
-  const [daysAgo, setDaysAgo] = useState(0)
-  const catalogLength = dailyPositionCatalog.length
-  const dayIndex = getDailyIndex(dateDaysAgo(daysAgo))
+  // Days ahead of today we're viewing: 0 = today, 1 = tomorrow.
+  const [dayOffset, setDayOffset] = useState(0)
+  const dayIndex = getDailyIndex(dateAtOffset(dayOffset))
   const position = dailyPositionCatalog[dayIndex]
   const maxPly = position ? replayPlyCap(position) : 0
 
   const [currentPly, setCurrentPly] = useState(maxPly)
 
-  const goToDaysAgo = useCallback((nextDaysAgo: number) => {
-    const nextPosition = dailyPositionCatalog[getDailyIndex(dateDaysAgo(nextDaysAgo))]
-    setDaysAgo(nextDaysAgo)
+  const goToDayOffset = useCallback((nextOffset: number) => {
+    const nextPosition = dailyPositionCatalog[getDailyIndex(dateAtOffset(nextOffset))]
+    setDayOffset(nextOffset)
     setCurrentPly(nextPosition ? replayPlyCap(nextPosition) : 0)
   }, [])
 
@@ -110,11 +111,11 @@ export function DailyBoard() {
     return null
   }
 
-  const canGoPrev = daysAgo < catalogLength - 1
-  const canGoNext = daysAgo > 0
+  const canGoPrev = dayOffset > 0
+  const canGoNext = dayOffset < MAX_DAY_OFFSET
   const boardFen = fenAtPly(position.moves, currentPly)
   const toMoveLabel = sideToMoveAtPly(currentPly)
-  const dateLabel = daysAgo === 0 ? "Today" : dateLabelFormatter.format(dateDaysAgo(daysAgo))
+  const dateLabel = dateLabelFormatter.format(dateAtOffset(dayOffset))
 
   return (
     <section className="flex w-full max-w-6xl flex-col px-4">
@@ -123,7 +124,7 @@ export function DailyBoard() {
           type="button"
           className={navButtonClass}
           disabled={!canGoPrev}
-          onClick={() => goToDaysAgo(daysAgo + 1)}
+          onClick={() => goToDayOffset(dayOffset - 1)}
           aria-label="Previous day"
         >
           <svg
@@ -151,7 +152,7 @@ export function DailyBoard() {
           type="button"
           className={navButtonClass}
           disabled={!canGoNext}
-          onClick={() => goToDaysAgo(daysAgo - 1)}
+          onClick={() => goToDayOffset(dayOffset + 1)}
           aria-label="Next day"
         >
           <svg
@@ -174,7 +175,7 @@ export function DailyBoard() {
 
       <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-x-16 lg:gap-y-5">
         <p className="text-left text-xs tracking-[0.3em] text-gold uppercase lg:col-start-1 lg:row-start-1">
-          {daysAgo === 0 ? "Today's position" : "Past position"}
+          {dayOffset === 0 ? "Today's position" : "Tomorrow's position"}
         </p>
 
         <div

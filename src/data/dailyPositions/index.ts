@@ -4,7 +4,7 @@ export { dailyPositionCatalog } from "./catalog"
 import { dailyPositionCatalog } from "./catalog"
 
 /** Calendar day (UTC) that maps to catalog index 0. */
-const ROTATION_ANCHOR_UTC = Date.UTC(2026, 5, 29) // Jun 29, 2026
+const ROTATION_ANCHOR_UTC = Date.UTC(2026, 6, 1) // Jul 1, 2026
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
