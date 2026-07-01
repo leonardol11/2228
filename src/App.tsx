@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { AuthModal } from "./components/AuthModal"
 import { Header } from "./components/Header"
-import { WeeklyBoard } from "./components/WeeklyBoard"
+import { DailyBoard } from "./components/DailyBoard"
 import { GamePage } from "./pages/GamePage"
 import { LeaderboardPage } from "./pages/LeaderboardPage"
 import { ProfilePage } from "./pages/ProfilePage"
@@ -50,7 +50,7 @@ function App() {
         }`}
       >
         {page === "home" ? (
-          <WeeklyBoard />
+          <DailyBoard />
         ) : page === "game" ? (
           <GamePage onExit={goHome} onSignIn={() => setAuthOpen(true)} />
         ) : page === "profile" ? (

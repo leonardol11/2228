@@ -25,9 +25,9 @@ import {
 import { recordGame } from "../lib/recordGame"
 import { getStockfishEngine } from "../lib/stockfishEngine"
 import {
-  currentWeekIndex,
-  weeklyPositions,
-} from "../data/mockData"
+  currentDayIndex,
+  dailyPositionCatalog,
+} from "../data/dailyPositions"
 import { playerRatingSnapshot, type GameResult } from "../types/profile"
 
 type GamePageProps = {
@@ -88,7 +88,7 @@ function applyUciMove(chess: Chess, uci: string): boolean {
 
 export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const { user, profile, refreshGames, refreshProfile, refreshLeaderboard, patchProfileRating, loading: authLoading } = useAuth()
-  const position = weeklyPositions[currentWeekIndex >= 0 ? currentWeekIndex : 0]
+  const position = dailyPositionCatalog[currentDayIndex >= 0 ? currentDayIndex : 0]
   const [userColor, setUserColor] = useState<Color>(randomUserColor)
   const userColorRef = useRef(userColor)
   const botColorRef = useRef<Color>(userColor === "w" ? "b" : "w")
@@ -172,7 +172,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         userRatingDeviation: player.deviation,
         opponentRating: botRating,
         positionTitle: position.title,
-        positionDate: position.dateRange,
+        positionDate: new Date().toISOString().slice(0, 10),
       })
 
       setSaving(false)
@@ -204,7 +204,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       await refreshProfile()
       void refreshLeaderboard()
     },
-    [botName, botRating, patchProfileRating, position.dateRange, position.title, profile, refreshGames, refreshLeaderboard, refreshProfile, user],
+    [botName, botRating, patchProfileRating, position.title, profile, refreshGames, refreshLeaderboard, refreshProfile, user],
   )
 
   const handleFlag = useCallback(

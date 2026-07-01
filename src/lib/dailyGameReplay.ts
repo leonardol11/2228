@@ -1,9 +1,9 @@
 import { Chess } from "chess.js"
-import type { WeeklyHistoricalGame } from "../data/weeklyGames"
+import type { DailyHistoricalGame } from "../data/dailyPositions"
 
 const START_FEN = new Chess().fen()
 
-export function replayPlyCap(game: WeeklyHistoricalGame): number {
+export function replayPlyCap(game: DailyHistoricalGame): number {
   if (game.positionAfterPly !== undefined) {
     return game.positionAfterPly
   }
@@ -11,7 +11,7 @@ export function replayPlyCap(game: WeeklyHistoricalGame): number {
   return game.moves.length
 }
 
-export function movesUpToKeyPosition(game: WeeklyHistoricalGame): string[] {
+export function movesUpToKeyPosition(game: DailyHistoricalGame): string[] {
   return game.moves.slice(0, replayPlyCap(game))
 }
 

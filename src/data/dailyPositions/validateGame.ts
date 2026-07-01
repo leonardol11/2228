@@ -1,9 +1,9 @@
 import { Chess } from "chess.js"
-import type { WeeklyHistoricalGame } from "./types"
+import type { DailyHistoricalGame } from "./types"
 
 /** Returns an error message when `fen` does not match `moves` at `positionAfterPly`. */
-export function validateWeeklyGame(game: WeeklyHistoricalGame): string | null {
-  if (game.comingSoon || game.moves.length === 0) {
+export function validateDailyGame(game: DailyHistoricalGame): string | null {
+  if (game.moves.length === 0) {
     return null
   }
 
@@ -11,7 +11,7 @@ export function validateWeeklyGame(game: WeeklyHistoricalGame): string | null {
 
   for (const move of game.moves) {
     if (!chess.move(move)) {
-      return `Illegal move "${move}" in week ${game.weekNumber}`
+      return `Illegal move "${move}" in "${game.title}"`
     }
   }
 
@@ -22,13 +22,13 @@ export function validateWeeklyGame(game: WeeklyHistoricalGame): string | null {
   const positionChess = new Chess()
   for (let ply = 0; ply < game.positionAfterPly; ply++) {
     if (!positionChess.move(game.moves[ply])) {
-      return `Could not reach ply ${game.positionAfterPly} in week ${game.weekNumber}`
+      return `Could not reach ply ${game.positionAfterPly} in "${game.title}"`
     }
   }
 
   const expected = positionChess.fen()
   if (expected !== game.fen) {
-    return `FEN mismatch in week ${game.weekNumber}.\nExpected: ${expected}\nGot:      ${game.fen}`
+    return `FEN mismatch in "${game.title}".\nExpected: ${expected}\nGot:      ${game.fen}`
   }
 
   return null

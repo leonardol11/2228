@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react"
 import { Chessboard } from "react-chessboard"
-import { currentWeekIndex, weeklyPositions } from "../data/mockData"
+import { dailyPositionCatalog, getDailyIndex } from "../data/dailyPositions"
 import {
   fenAtPly,
   replayPlyCap,
   sideToMoveAtPly,
-} from "../lib/weeklyGameReplay"
+} from "../lib/dailyGameReplay"
 import { HistoricalGameRecord } from "./HistoricalGameRecord"
 
 const boardStyles = {
@@ -37,6 +37,13 @@ const boardSize = "min(70vmin, 580px)"
 const navButtonClass =
   "flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-white/50 text-ink/50 transition-all duration-300 hover:border-border-strong hover:bg-white/80 hover:text-ink disabled:cursor-default disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-white/50 disabled:hover:text-ink/50"
 
+const dateLabelFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+})
+
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
     return false
@@ -46,23 +53,26 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable
 }
 
-export function WeeklyBoard() {
-  const [weekIndex, setWeekIndex] = useState(
-    currentWeekIndex >= 0 ? currentWeekIndex : 0,
-  )
-  const position = weeklyPositions[weekIndex]
-  const isComingSoon = position.comingSoon === true
-  const maxPly = isComingSoon ? 0 : replayPlyCap(position)
+function dateDaysAgo(days: number): Date {
+  const date = new Date()
+  date.setUTCDate(date.getUTCDate() - days)
+  return date
+}
+
+export function DailyBoard() {
+  // How many days back from today we're viewing. 0 = today's position.
+  const [daysAgo, setDaysAgo] = useState(0)
+  const catalogLength = dailyPositionCatalog.length
+  const dayIndex = getDailyIndex(dateDaysAgo(daysAgo))
+  const position = dailyPositionCatalog[dayIndex]
+  const maxPly = position ? replayPlyCap(position) : 0
 
   const [currentPly, setCurrentPly] = useState(maxPly)
 
-  const goToWeek = useCallback((index: number) => {
-    const nextPosition = weeklyPositions[index]
-    const nextMaxPly = nextPosition.comingSoon
-      ? 0
-      : replayPlyCap(nextPosition)
-    setWeekIndex(index)
-    setCurrentPly(nextMaxPly)
+  const goToDaysAgo = useCallback((nextDaysAgo: number) => {
+    const nextPosition = dailyPositionCatalog[getDailyIndex(dateDaysAgo(nextDaysAgo))]
+    setDaysAgo(nextDaysAgo)
+    setCurrentPly(nextPosition ? replayPlyCap(nextPosition) : 0)
   }, [])
 
   const stepBackward = useCallback(() => {
@@ -74,7 +84,7 @@ export function WeeklyBoard() {
   }, [maxPly])
 
   useEffect(() => {
-    if (isComingSoon) {
+    if (!position) {
       return
     }
 
@@ -94,14 +104,17 @@ export function WeeklyBoard() {
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isComingSoon, stepBackward, stepForward])
+  }, [position, stepBackward, stepForward])
 
-  const canGoPrev = weekIndex > 0
-  const canGoNext = weekIndex < weeklyPositions.length - 1
-  const boardFen = isComingSoon ? position.fen : fenAtPly(position.moves, currentPly)
-  const toMoveLabel = isComingSoon
-    ? position.toMove
-    : sideToMoveAtPly(currentPly)
+  if (!position) {
+    return null
+  }
+
+  const canGoPrev = daysAgo < catalogLength - 1
+  const canGoNext = daysAgo > 0
+  const boardFen = fenAtPly(position.moves, currentPly)
+  const toMoveLabel = sideToMoveAtPly(currentPly)
+  const dateLabel = daysAgo === 0 ? "Today" : dateLabelFormatter.format(dateDaysAgo(daysAgo))
 
   return (
     <section className="flex w-full max-w-6xl flex-col px-4">
@@ -110,8 +123,8 @@ export function WeeklyBoard() {
           type="button"
           className={navButtonClass}
           disabled={!canGoPrev}
-          onClick={() => goToWeek(weekIndex - 1)}
-          aria-label="Previous week"
+          onClick={() => goToDaysAgo(daysAgo + 1)}
+          aria-label="Previous day"
         >
           <svg
             width="14"
@@ -131,15 +144,15 @@ export function WeeklyBoard() {
         </button>
 
         <p className="min-w-[12rem] text-center text-xs tracking-[0.3em] text-gold uppercase">
-          Week {position.weekNumber} · {position.dateRange}
+          {dateLabel}
         </p>
 
         <button
           type="button"
           className={navButtonClass}
           disabled={!canGoNext}
-          onClick={() => goToWeek(weekIndex + 1)}
-          aria-label="Next week"
+          onClick={() => goToDaysAgo(daysAgo - 1)}
+          aria-label="Next day"
         >
           <svg
             width="14"
@@ -160,10 +173,8 @@ export function WeeklyBoard() {
       </div>
 
       <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-x-16 lg:gap-y-5">
-        <p
-          className={`text-left text-xs tracking-[0.3em] uppercase lg:col-start-1 lg:row-start-1 ${isComingSoon ? "text-gold/50" : "text-gold"}`}
-        >
-          {position.label}
+        <p className="text-left text-xs tracking-[0.3em] text-gold uppercase lg:col-start-1 lg:row-start-1">
+          {daysAgo === 0 ? "Today's position" : "Past position"}
         </p>
 
         <div
@@ -174,7 +185,7 @@ export function WeeklyBoard() {
           }}
         >
           <Chessboard
-            key={position.weekNumber}
+            key={dayIndex}
             options={{
               position: boardFen,
               allowDragging: false,
@@ -189,50 +200,32 @@ export function WeeklyBoard() {
               ...notationStyles,
             }}
           />
-          {isComingSoon && (
-            <div className="absolute inset-2 flex flex-col items-center justify-center bg-cream/72 backdrop-blur-[2px]">
-              <p className="font-display text-3xl tracking-[0.08em] text-ink/45 md:text-4xl">
-                Coming Soon
-              </p>
-              <p className="mt-2 text-[10px] tracking-[0.28em] text-gold/70 uppercase">
-                Jul 6
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden text-center lg:col-start-1 lg:row-start-2 lg:max-w-lg lg:text-left">
-          <h2
-            className={`shrink-0 font-display text-4xl md:text-5xl ${isComingSoon ? "text-ink/35" : "text-ink"}`}
-          >
+          <h2 className="shrink-0 font-display text-4xl text-ink md:text-5xl">
             {position.title}
           </h2>
-          {!isComingSoon && (
-            <p className="mt-3 shrink-0 text-sm tracking-[0.12em] text-gold uppercase">
-              {toMoveLabel} to move
-              {currentPly < maxPly && (
-                <span className="ml-2 text-muted normal-case tracking-normal">
-                  · move {currentPly} of {maxPly}
-                </span>
-              )}
-            </p>
-          )}
-          <p
-            className={`mt-5 shrink-0 font-display text-lg leading-[1.75] font-light md:text-xl md:leading-[1.7] ${isComingSoon ? "text-muted" : "text-ink/75"}`}
-          >
+          <p className="mt-3 shrink-0 text-sm tracking-[0.12em] text-gold uppercase">
+            {toMoveLabel} to move
+            {currentPly < maxPly && (
+              <span className="ml-2 text-muted normal-case tracking-normal">
+                · move {currentPly} of {maxPly}
+              </span>
+            )}
+          </p>
+          <p className="mt-5 shrink-0 font-display text-lg leading-[1.75] font-light text-ink/75 md:text-xl md:leading-[1.7]">
             {position.description}
           </p>
-          {!isComingSoon && (
-            <HistoricalGameRecord
-              game={position}
-              currentPly={currentPly}
-              fillHeight
-              onStepBack={stepBackward}
-              onStepForward={stepForward}
-              canStepBack={currentPly > 0}
-              canStepForward={currentPly < maxPly}
-            />
-          )}
+          <HistoricalGameRecord
+            game={position}
+            currentPly={currentPly}
+            fillHeight
+            onStepBack={stepBackward}
+            onStepForward={stepForward}
+            canStepBack={currentPly > 0}
+            canStepForward={currentPly < maxPly}
+          />
         </div>
       </div>
     </section>

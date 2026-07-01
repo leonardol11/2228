@@ -1,14 +1,12 @@
-import type { WeeklyHistoricalGame } from "./types"
+import type { DailyHistoricalGame } from "./types"
 
 /**
- * Add one entry per week. Keep `weekNumber` sequential.
+ * Add one entry per position. The site automatically rotates through this
+ * list, showing one entry per calendar day (see `getDailyIndex` in ./index).
  * Copy the template at the bottom when you add a new game.
  */
-export const weeklyGameCatalog: WeeklyHistoricalGame[] = [
+export const dailyPositionCatalog: DailyHistoricalGame[] = [
   {
-    weekNumber: 1,
-    dateRange: "Jun 29 – Jul 5, 2026",
-    label: "This week's position",
     title: "The Marshall Attack",
     white: "José Raúl Capablanca",
     black: "Frank James Marshall",
@@ -105,32 +103,12 @@ export const weeklyGameCatalog: WeeklyHistoricalGame[] = [
       "Qh5#",
     ],
     positionAfterPly: 30,
-    comingSoon: false,
-  },
-  {
-    weekNumber: 2,
-    dateRange: "Jul 6 – Jul 12, 2026",
-    label: "Next week's position",
-    title: "Coming Soon",
-    white: "",
-    black: "",
-    year: 0,
-    event: "",
-    description:
-      "A new famous position drops when the week begins. Another historic game, another even fight, another chance to climb the board.",
-    toMove: "White",
-    fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-    moves: [],
-    comingSoon: true,
   },
 ]
 
 // ——— Template: copy, paste above, and fill in ———
 //
 // {
-//   weekNumber: 3,
-//   dateRange: "Jul 13 – Jul 19, 2026",
-//   label: "This week's position",
 //   title: "Immortal Game",
 //   white: "Adolf Anderssen",
 //   black: "Lionel Kieseritzky",
@@ -144,5 +122,4 @@ export const weeklyGameCatalog: WeeklyHistoricalGame[] = [
 //     "e4", "e5", "f4", // ... full game in SAN
 //   ],
 //   positionAfterPly: 0, // ply in `moves` that matches `fen`
-//   comingSoon: false,
 // },

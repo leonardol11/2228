@@ -1,18 +1,12 @@
 /**
- * A famous historical game featured as one week on 2228.
+ * A famous historical game featured as one day's position on 2228.
  *
- * `fen` is where ranked games start that week.
+ * `fen` is where ranked games start that day.
  * `moves` is the full move list in SAN — add as many as you like while researching.
  * When `positionAfterPly` is set, it marks which ply in `moves` produces `fen`
  * (ply 0 = before any move, ply 28 = after 14... move in a 14-move line).
  */
-export type WeeklyHistoricalGame = {
-  weekNumber: number
-  /** When this position is live on 2228, e.g. "Jun 29 – Jul 5, 2026" */
-  dateRange: string
-  /** UI label, e.g. "This week's position" */
-  label: string
-
+export type DailyHistoricalGame = {
   /** Short name for the game or moment, e.g. "The Marshall Attack" */
   title: string
   white: string
@@ -37,6 +31,4 @@ export type WeeklyHistoricalGame = {
 
   /** Ply index in `moves` after which the position equals `fen`. Optional until filled in. */
   positionAfterPly?: number
-
-  comingSoon?: boolean
 }

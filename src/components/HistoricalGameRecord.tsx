@@ -1,8 +1,8 @@
-import type { WeeklyHistoricalGame } from "../data/weeklyGames"
-import { movesUpToKeyPosition } from "../lib/weeklyGameReplay"
+import type { DailyHistoricalGame } from "../data/dailyPositions"
+import { movesUpToKeyPosition } from "../lib/dailyGameReplay"
 
 type HistoricalGameRecordProps = {
-  game: WeeklyHistoricalGame
+  game: DailyHistoricalGame
   currentPly: number
   fillHeight?: boolean
   onStepBack: () => void
@@ -14,7 +14,7 @@ type HistoricalGameRecordProps = {
 const stepButtonClass =
   "flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-white/50 text-ink/50 transition-all duration-300 hover:border-border-strong hover:bg-white/80 hover:text-ink disabled:cursor-default disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-white/50 disabled:hover:text-ink/50"
 
-function formatPlayedDate(game: WeeklyHistoricalGame): string | null {
+function formatPlayedDate(game: DailyHistoricalGame): string | null {
   if (game.playedOn) {
     const [year, month, day] = game.playedOn.split("-")
     if (year && month && day) {
@@ -61,7 +61,7 @@ export function HistoricalGameRecord({
   canStepBack,
   canStepForward,
 }: HistoricalGameRecordProps) {
-  if (game.comingSoon || game.moves.length === 0) {
+  if (game.moves.length === 0) {
     return null
   }
 
