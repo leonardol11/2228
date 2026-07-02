@@ -3,18 +3,29 @@ export { dailyPositionCatalog } from "./catalog"
 
 import { dailyPositionCatalog } from "./catalog"
 
-/** Calendar day (UTC) that maps to catalog index 0. */
+/** Calendar day (America/New_York) that maps to catalog index 0. */
 const ROTATION_ANCHOR_UTC = Date.UTC(2026, 6, 1) // Jul 1, 2026
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
+const ROTATION_TIME_ZONE = "America/New_York"
+
+const nyCalendarFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: ROTATION_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+})
+
+/** Midnight UTC of the calendar date `date` falls on in New York (handles EST/EDT). */
+function nyCalendarUtcMidnight(date: Date): number {
+  const parts = nyCalendarFormatter.formatToParts(date)
+  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value)
+  return Date.UTC(get("year"), get("month") - 1, get("day"))
+}
+
 function daysSinceAnchor(date: Date): number {
-  const todayUtc = Date.UTC(
-    date.getUTCFullYear(),
-    date.getUTCMonth(),
-    date.getUTCDate(),
-  )
-  return Math.floor((todayUtc - ROTATION_ANCHOR_UTC) / MS_PER_DAY)
+  return Math.floor((nyCalendarUtcMidnight(date) - ROTATION_ANCHOR_UTC) / MS_PER_DAY)
 }
 
 /** Which catalog entry is "today's position" for the given date (defaults to now). */

@@ -45,7 +45,7 @@ const dateLabelFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
-  timeZone: "UTC",
+  timeZone: "America/New_York",
 })
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -63,7 +63,9 @@ function dateAtOffset(offsetDays: number): Date {
   return date
 }
 
-const MAX_DAY_OFFSET = 1 // 0 = today, 1 = tomorrow
+// How far ahead users can page. Future days beyond today are shown locked
+// (see `isLocked` below) so the position for that day isn't spoiled early.
+const MAX_DAY_OFFSET = 6
 
 export function DailyBoard() {
   // Days ahead of today we're viewing: negative = past, 0 = today, 1 = tomorrow.
@@ -118,11 +120,12 @@ export function DailyBoard() {
 
   const canGoPrev = dayOffset > minDayOffset
   const canGoNext = dayOffset < MAX_DAY_OFFSET
+  const isLocked = dayOffset > 0
   const boardFen = fenAtPly(position.moves, currentPly)
   const toMoveLabel = sideToMoveAtPly(currentPly)
   const dateLabel = dateLabelFormatter.format(dateAtOffset(dayOffset))
   const dayLabel =
-    dayOffset === 0 ? "Today's position" : dayOffset > 0 ? "Tomorrow's position" : "Past position"
+    dayOffset === 0 ? "Today's position" : isLocked ? "Upcoming position" : "Past position"
 
   return (
     <section className="flex w-full max-w-6xl flex-col px-4">
@@ -180,62 +183,72 @@ export function DailyBoard() {
         </button>
       </div>
 
-      <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-x-16 lg:gap-y-5">
-        <p className="text-left text-xs tracking-[0.3em] text-gold uppercase lg:col-start-1 lg:row-start-1">
-          {dayLabel}
-        </p>
+      {isLocked ? (
+        <div className="flex w-full flex-col items-center gap-3 py-20 text-center">
+          <p className="text-xs tracking-[0.3em] text-gold uppercase">{dayLabel}</p>
+          <h2 className="font-display text-4xl text-ink md:text-5xl">Come back soon</h2>
+          <p className="max-w-sm font-display text-lg font-light text-ink/70 md:text-xl">
+            This day's historical position stays under wraps until it's live. Check back on {dateLabel} to see it.
+          </p>
+        </div>
+      ) : (
+        <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-x-16 lg:gap-y-5">
+          <p className="text-left text-xs tracking-[0.3em] text-gold uppercase lg:col-start-1 lg:row-start-1">
+            {dayLabel}
+          </p>
 
-        <div
-          className="relative mx-auto shrink-0 border border-border bg-surface p-2 shadow-[0_8px_40px_rgba(28,26,23,0.08)] lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:mx-0"
-          style={{
-            width: boardSize,
-            height: boardSize,
-          }}
-        >
-          <Chessboard
-            key={dayIndex}
-            options={{
-              position: boardFen,
-              allowDragging: false,
-              showAnimations: true,
-              animationDurationInMs: 120,
-              boardStyle: {
-                borderRadius: "0",
-                width: "100%",
-                height: "100%",
-              },
-              ...boardStyles,
-              ...notationStyles,
+          <div
+            className="relative mx-auto shrink-0 border border-border bg-surface p-2 shadow-[0_8px_40px_rgba(28,26,23,0.08)] lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:mx-0"
+            style={{
+              width: boardSize,
+              height: boardSize,
             }}
-          />
-        </div>
+          >
+            <Chessboard
+              key={dayIndex}
+              options={{
+                position: boardFen,
+                allowDragging: false,
+                showAnimations: true,
+                animationDurationInMs: 120,
+                boardStyle: {
+                  borderRadius: "0",
+                  width: "100%",
+                  height: "100%",
+                },
+                ...boardStyles,
+                ...notationStyles,
+              }}
+            />
+          </div>
 
-        <div className="flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden text-center lg:col-start-1 lg:row-start-2 lg:max-w-lg lg:text-left">
-          <h2 className="shrink-0 font-display text-4xl text-ink md:text-5xl">
-            {position.title}
-          </h2>
-          <p className="mt-3 shrink-0 text-sm tracking-[0.12em] text-gold uppercase">
-            {toMoveLabel} to move
-            {currentPly < maxPly && (
-              <span className="ml-2 text-muted normal-case tracking-normal">
-                · move {currentPly} of {maxPly}
-              </span>
-            )}
-          </p>
-          <p className="mt-5 shrink-0 font-display text-lg leading-[1.75] font-light text-ink/75 md:text-xl md:leading-[1.7]">
-            {position.description}
-          </p>
-          <HistoricalGameRecord
-            game={position}
-            currentPly={currentPly}
-            fillHeight
-            onStepBack={stepBackward}
-            onStepForward={stepForward}
-            canStepBack={currentPly > 0}
-            canStepForward={currentPly < maxPly}
-          />
+          <div className="flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden text-center lg:col-start-1 lg:row-start-2 lg:max-w-lg lg:text-left">
+            <h2 className="shrink-0 font-display text-4xl text-ink md:text-5xl">
+              {position.title}
+            </h2>
+            <p className="mt-3 shrink-0 text-sm tracking-[0.12em] text-gold uppercase">
+              {toMoveLabel} to move
+              {currentPly < maxPly && (
+                <span className="ml-2 text-muted normal-case tracking-normal">
+                  · move {currentPly} of {maxPly}
+                </span>
+              )}
+            </p>
+            <p className="mt-5 shrink-0 font-display text-lg leading-[1.75] font-light text-ink/75 md:text-xl md:leading-[1.7]">
+              {position.description}
+            </p>
+            <HistoricalGameRecord
+              game={position}
+              currentPly={currentPly}
+              fillHeight
+              onStepBack={stepBackward}
+              onStepForward={stepForward}
+              canStepBack={currentPly > 0}
+              canStepForward={currentPly < maxPly}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </section>
   )
 }
