@@ -87,8 +87,20 @@ function applyUciMove(chess: Chess, uci: string): boolean {
 }
 
 export function GamePage({ onExit, onSignIn }: GamePageProps) {
-  const { user, profile, refreshGames, refreshProfile, refreshLeaderboard, patchProfileRating, loading: authLoading } = useAuth()
+  const {
+    user,
+    profile,
+    games,
+    gamesLoading,
+    refreshGames,
+    refreshProfile,
+    refreshLeaderboard,
+    patchProfileRating,
+    loading: authLoading,
+  } = useAuth()
   const position = dailyPositionCatalog[currentDayIndex >= 0 ? currentDayIndex : 0]
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const alreadyPlayedToday = games.some((game) => game.position_date === todayStr)
   const [userColor, setUserColor] = useState<Color>(randomUserColor)
   const userColorRef = useRef(userColor)
   const botColorRef = useRef<Color>(userColor === "w" ? "b" : "w")
@@ -528,6 +540,26 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     )
   }
 
+  if (user && gamesLoading) {
+    return null
+  }
+
+  if (user && alreadyPlayedToday && !gameRecordedRef.current) {
+    return (
+      <section className="flex w-full max-w-lg flex-col items-center px-4 text-center">
+        <p className="font-display text-3xl text-ink md:text-4xl">One game a day</p>
+        <p className="mt-3 max-w-sm text-sm leading-relaxed text-ink/75">
+          You've already played today's position. Come back tomorrow for a new one.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <button type="button" className={ghostButtonClass} onClick={onExit}>
+            Back
+          </button>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="flex h-full w-full min-h-0 flex-col">
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:overflow-hidden">
@@ -630,13 +662,19 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
                     </p>
                   )}
 
-                  <button
-                    type="button"
-                    className={`${ghostButtonClass} relative mt-3 w-full`}
-                    onClick={resetGame}
-                  >
-                    Play Again
-                  </button>
+                  {user && gameRecordedRef.current ? (
+                    <p className="relative mt-3 text-[10px] tracking-[0.14em] text-muted uppercase">
+                      That's your game for today — come back tomorrow
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`${ghostButtonClass} relative mt-3 w-full`}
+                      onClick={resetGame}
+                    >
+                      Play Again
+                    </button>
+                  )}
                 </div>
               </div>
             )}

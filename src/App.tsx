@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AuthModal } from "./components/AuthModal"
 import { Header } from "./components/Header"
 import { DailyBoard } from "./components/DailyBoard"
@@ -8,23 +8,43 @@ import { ProfilePage } from "./pages/ProfilePage"
 
 type Page = "home" | "game" | "profile" | "leaderboard"
 
+const HASH_PAGES: Page[] = ["game", "profile", "leaderboard"]
+
+function pageFromHash(hash: string): Page {
+  const candidate = hash.replace(/^#/, "")
+  return (HASH_PAGES as string[]).includes(candidate) ? (candidate as Page) : "home"
+}
+
 function App() {
-  const [page, setPage] = useState<Page>("home")
+  const [page, setPage] = useState<Page>(() => pageFromHash(window.location.hash))
   const [authOpen, setAuthOpen] = useState(false)
 
+  useEffect(() => {
+    function handleHashChange() {
+      setPage(pageFromHash(window.location.hash))
+    }
+
+    window.addEventListener("hashchange", handleHashChange)
+    return () => window.removeEventListener("hashchange", handleHashChange)
+  }, [])
+
   function goHome() {
+    window.location.hash = ""
     setPage("home")
   }
 
   function goGame() {
+    window.location.hash = "game"
     setPage("game")
   }
 
   function goProfile() {
+    window.location.hash = "profile"
     setPage("profile")
   }
 
   function goLeaderboard() {
+    window.location.hash = "leaderboard"
     setPage("leaderboard")
   }
 

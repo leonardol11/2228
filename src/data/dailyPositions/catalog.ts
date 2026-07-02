@@ -17,8 +17,8 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     result: "1-0",
     description:
       "Played as a casual game during a break in the first international tournament, White has already given up a bishop for a single pawn. Black's queen is deep in enemy territory and looks completely in control. What follows became one of the most famous attacks in chess history.",
-    toMove: "White",
-    fen: "rnb1k1nr/p2p1ppp/8/1pbN1N1P/4PBP1/3P1Q2/PqP5/R4KR1 w kq - 0 18",
+    toMove: "Black",
+    fen: "rnb1kb1r/p2p1ppp/2p2n2/1B3Nq1/4PpP1/3P4/PPP4P/RNBQ1KR1 b kq - 2 11",
     moves: [
       "e4", "e5", "f4", "exf4", "Bc4", "Qh4+", "Kf1", "b5", "Bxb5", "Nf6",
       "Nf3", "Qh6", "d3", "Nh5", "Nh4", "Qg5", "Nf5", "c6", "g4", "Nf6",
@@ -26,7 +26,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
       "Nc3", "Bc5", "Nd5", "Qxb2", "Bd6", "Bxg1", "e5", "Qxa1+", "Ke2", "Na6",
       "Nxg7+", "Kd8", "Qf6+", "Nxf6", "Be7#",
     ],
-    positionAfterPly: 34,
+    positionAfterPly: 21,
   },
   {
     title: "The Gold Coins Game",
