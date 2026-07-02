@@ -16,7 +16,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     playedOn: "1851-06-21",
     result: "1-0",
     description:
-      "Played as a friendly break between rounds of the first international tournament, Anderssen throws a bishop, both rooks, and his queen onto the fire. Here Black's queen has just snatched a second pawn and looks completely in charge — most players would resign as White. Anderssen instead had the whole finish calculated, and three moves later delivered mate with nothing left on the board but a bishop and two knights.",
+      "Played as a casual game during a break in the first international tournament, White has already given up a bishop for a single pawn. Black's queen is deep in enemy territory and looks completely in control. What follows became one of the most famous attacks in chess history.",
     toMove: "White",
     fen: "rnb1k1nr/p2p1ppp/8/1pbN1N1P/4PBP1/3P1Q2/PqP5/R4KR1 w kq - 0 18",
     moves: [
@@ -38,7 +38,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     playedOn: "1912-07-20",
     result: "0-1",
     description:
-      "White's rook has just landed on c5, attacking Black's queen head-on — the natural read is that Marshall has to retreat and White keeps the better game. Instead Marshall played 23...Qg3!!, dropping his queen onto a square where it can be captured three different ways and still leaves White with no defense. Spectators are said to have showered the board with gold coins afterward, though Marshall's own wife later disputed the legend.",
+      "White's rook has just landed on c5, attacking Black's queen head on. The obvious answer is to retreat and accept the worse position. Marshall found something else entirely, a move so startling that spectators are said to have showered the board with gold coins afterward.",
     toMove: "Black",
     fen: "5rk1/pp4pp/4p3/2R3Q1/3n4/2q4r/P1P2PPP/5RK1 b - - 1 23",
     moves: [
@@ -60,7 +60,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     playedOn: "1956-10-17",
     result: "0-1",
     description:
-      "Fischer was thirteen years old when he played this move. His bishop has just landed on e6, offered en prise to White's bishop on c4 — grab the free piece and White walks into a fork, a discovered attack, and a slow bleed of material that ends eighteen moves later in a knight-and-bishop mating net. Right now it just looks like a blunder.",
+      "Fischer was only thirteen years old in this game. His bishop has just moved to e6, seemingly ignoring that White's bishop on c4 could simply capture it for free. Taking that piece looks completely safe, and it is the decision that made Fischer famous almost overnight.",
     toMove: "White",
     fen: "r3r1k1/pp3pbp/1qp1b1p1/2B5/2BP4/Q1n2N2/P4PPP/3R1K1R w - - 4 18",
     moves: [
@@ -86,7 +86,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     playedOn: "1960-02-20",
     result: "1-0",
     description:
-      "Black's pawn sits on e2, one square from queening — on the surface White is the one in danger. Spassky answered with 15.Nd6!!, dropping a knight deep into Black's camp anyway, the first of two sacrifices that rip the king open. Bronstein resigned nine moves later rather than face the forced mate; the game was later restaged, subtitles and all, in the James Bond film From Russia with Love.",
+      "Black's pawn sits one square from queening on e2, and on the surface White is the one in trouble. Spassky saw the position differently. What he found here became one of the most celebrated attacks in Soviet chess, later restaged almost move for move in a James Bond film.",
     toMove: "White",
     fen: "r1bqr1k1/pppnbpp1/7p/2P5/3PN3/3Q1N2/PPB1p1PP/R4RK1 w - - 0 15",
     moves: [
@@ -106,7 +106,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     event: "RSFSR Team Championship",
     site: "Rostov-on-Don",
     description:
-      "Black has just attacked White's queen with 11...Bf6, and retreating looks completely normal. Nezhmetdinov — a player who never held the grandmaster title but out-combined many who did — played 12.Qxf6!! instead, giving up his queen for an attack built entirely on pattern and calculation rather than material. Chernikov held on for twenty more moves before resigning.",
+      "Black has just attacked White's queen, and retreating looks like the safe, obvious choice. Nezhmetdinov never held the grandmaster title, yet he saw further here than most grandmasters ever have. The attack he found is still studied as one of the purest ever played.",
     toMove: "White",
     fen: "r1b2rk1/pp1ppp1p/5bp1/q7/3nP2Q/1BN1B3/PPP2PPP/R4RK1 w - - 4 12",
     moves: [
@@ -130,7 +130,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     playedOn: "1972-07-23",
     result: "1-0",
     description:
-      "Both knights have just been traded off on d5, leaving a level, symmetrical-looking structure that either side could be happy with. Fischer, playing an opening he had never used before in a serious game, spent the next thirty moves quietly regrouping his pieces until the position simply fell apart for Black. Spassky was so impressed he joined the audience in applauding his own defeat.",
+      "Both knights have just traded off, leaving a level, symmetrical structure either side could be happy with. Fischer was playing an opening he had never used in serious competition before. What he built from this quiet position impressed Spassky enough to applaud from his seat.",
     toMove: "White",
     fen: "rnb2rk1/p1p1qpp1/1p5p/3p4/3P4/4PN2/PP3PPP/R2QKB1R w KQ - 0 11",
     moves: [
@@ -156,7 +156,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     playedOn: "1985-10-15",
     result: "0-1",
     description:
-      "A dense, roughly balanced Sicilian middlegame — the kind of position where either side could still claim the game. Kasparov is about to play 16...Nd3!, dropping a knight onto a square where it cannot be captured for eighteen moves, cramping Karpov's whole position until it collapses. Chess Informant readers voted it the best game published in the magazine's first sixty-four issues.",
+      "This is a dense, balanced Sicilian middlegame where either side could still claim the advantage. Kasparov found an idea here that would define the entire game: a knight planted deep in enemy territory that could not be dislodged. Chess Informant readers voted it the best game of the magazine's first sixty-four issues.",
     toMove: "Black",
     fen: "r2qr1k1/5ppp/p4n2/1pbP1bB1/1n6/N1N2B2/PP1Q1PPP/3R1RK1 b - - 1 16",
     moves: [
@@ -181,7 +181,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     playedOn: "1991-10-21",
     result: "1-0",
     description:
-      "Heavy pieces still cover the board and both kings look reasonably safe. From here Short begins the boldest walk in chess history, marching his own king up the board — Kh2, Kg3, Kf4, Kg5! — to join the mating attack in person. Timman resigned rather than watch it finish; the only defense allowed mate in five anyway.",
+      "Heavy pieces still cover the board, and on the surface both kings look reasonably safe. From here Short began the boldest plan in chess history, marching his own king up the board to join the attack in person. Timman resigned rather than watch it reach its conclusion.",
     toMove: "White",
     fen: "4rrk1/1bpR1p1p/1pq1pQp1/p3P3/P1PR4/5N1P/2P2PP1/6K1 w - - 4 30",
     moves: [
@@ -205,7 +205,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     playedOn: "1999-01-20",
     result: "1-0",
     description:
-      "Opposite-side castling, both kings pried open, and a queen just centralized on d6 — this is the kind of position where a single tempo decides everything and it is genuinely unclear whose attack lands first. Kasparov is about to play 24.Rxd4!!, an exchange sacrifice that begins a combination he calculated to the very end, a sequence still cited as the deepest ever played in a serious game.",
+      "Both kings have castled queenside, an unusual pairing that puts them within reach of each other. A single tempo can decide everything here, and it is genuinely unclear whose attack lands first. Kasparov calculated a combination so deep it is still cited as one of the most precise ever played.",
     toMove: "White",
     fen: "b2r3r/k4p1p/p2q1np1/NppP4/3p1Q2/P4PPB/1PP4P/1K1RR3 w - - 1 24",
     moves: [
@@ -233,7 +233,7 @@ export const dailyPositionCatalog: DailyHistoricalGame[] = [
     whiteRating: 2681,
     blackRating: 2838,
     description:
-      "Queens came off the board on move eight, leaving a level-looking endgame with both kings still stuck in the center — nothing here screams decisive. Over the next thirty-four moves Polgar simply outplayed the world's top-rated player from this position, producing the first win by a woman over a reigning world number one.",
+      "Queens came off the board on move eight, leaving an early, level-looking endgame with both kings still stuck in the center. Nothing here looks decisive yet. Polgar's technique from this exact position produced the first win by a woman over a reigning world number one.",
     toMove: "White",
     fen: "r1bk1b1r/ppp2ppp/2p5/4Pn2/8/5N2/PPP2PPP/RNB2RK1 w - - 0 9",
     moves: [
