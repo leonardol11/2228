@@ -40,8 +40,7 @@ export function Header({
         </button>
 
         <button type="button" className={ghostClass} onClick={onLeaderboard}>
-          <span className="sm:hidden">Ranks</span>
-          <span className="hidden sm:inline">Leaderboard</span>
+          Leaderboard
         </button>
 
         {!loading && user ? (
@@ -54,8 +53,7 @@ export function Header({
               className={ghostClass}
               onClick={() => void signOut()}
             >
-              <span className="sm:hidden">Out</span>
-              <span className="hidden sm:inline">Sign Out</span>
+              Sign Out
             </button>
           </>
         ) : (

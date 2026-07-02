@@ -15,7 +15,7 @@ type Mode = "sign-in" | "sign-up"
 type SignUpStep = 1 | 2 | 3
 
 const inputClass =
-  "w-full rounded-xl border border-white/60 bg-white/70 px-4 py-3 text-sm text-ink placeholder:text-muted/70 shadow-[inset_0_1px_2px_rgba(28,26,23,0.04)] outline-none transition-all duration-300 focus:border-gold/50 focus:bg-white/90 focus:shadow-[0_0_0_3px_rgba(154,123,60,0.12)]"
+  "w-full rounded-xl border border-white/60 bg-white/70 px-4 py-3 text-base text-ink placeholder:text-muted/70 shadow-[inset_0_1px_2px_rgba(28,26,23,0.04)] outline-none transition-all duration-300 focus:border-gold/50 focus:bg-white/90 focus:shadow-[0_0_0_3px_rgba(154,123,60,0.12)] sm:text-sm"
 
 const labelClass =
   "text-[10px] font-medium tracking-[0.18em] text-muted uppercase"

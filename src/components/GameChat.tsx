@@ -155,7 +155,7 @@ export function GameChat({
               onChange={(event) => setDraft(event.target.value)}
               placeholder={enabled ? "Write a message…" : "Chat is disabled"}
               disabled={!enabled || gameOver}
-              className="w-full rounded-lg border border-white/60 bg-white/55 px-3 py-2 text-sm text-ink placeholder:text-muted/70 focus:border-gold/50 focus:outline-none disabled:opacity-50"
+              className="w-full rounded-lg border border-white/60 bg-white/55 px-3 py-2 text-base text-ink placeholder:text-muted/70 focus:border-gold/50 focus:outline-none disabled:opacity-50 sm:text-sm"
             />
           </form>
         ) : (
