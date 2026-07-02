@@ -71,6 +71,7 @@ export function DailyBoard() {
   // Days ahead of today we're viewing: negative = past, 0 = today, 1 = tomorrow.
   const [dayOffset, setDayOffset] = useState(0)
   const minDayOffset = -daysAvailableBefore()
+  const isLocked = dayOffset > 0
   const dayIndex = getDailyIndex(dateAtOffset(dayOffset))
   const position = dailyPositionCatalog[dayIndex]
   const maxPly = position ? replayPlyCap(position) : 0
@@ -92,7 +93,7 @@ export function DailyBoard() {
   }, [maxPly])
 
   useEffect(() => {
-    if (!position) {
+    if (!position || isLocked) {
       return
     }
 
@@ -112,7 +113,7 @@ export function DailyBoard() {
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [position, stepBackward, stepForward])
+  }, [position, isLocked, stepBackward, stepForward])
 
   if (!position) {
     return null
@@ -120,7 +121,6 @@ export function DailyBoard() {
 
   const canGoPrev = dayOffset > minDayOffset
   const canGoNext = dayOffset < MAX_DAY_OFFSET
-  const isLocked = dayOffset > 0
   const boardFen = fenAtPly(position.moves, currentPly)
   const toMoveLabel = sideToMoveAtPly(currentPly)
   const dateLabel = dateLabelFormatter.format(dateAtOffset(dayOffset))
@@ -183,27 +183,21 @@ export function DailyBoard() {
         </button>
       </div>
 
-      {isLocked ? (
-        <div className="flex w-full flex-col items-center gap-3 py-20 text-center">
-          <p className="text-xs tracking-[0.3em] text-gold uppercase">{dayLabel}</p>
-          <h2 className="font-display text-4xl text-ink md:text-5xl">Come back soon</h2>
-          <p className="max-w-sm font-display text-lg font-light text-ink/70 md:text-xl">
-            This day's historical position stays under wraps until it's live. Check back on {dateLabel} to see it.
-          </p>
-        </div>
-      ) : (
-        <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-x-16 lg:gap-y-5">
-          <p className="text-left text-xs tracking-[0.3em] text-gold uppercase lg:col-start-1 lg:row-start-1">
-            {dayLabel}
-          </p>
+      <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-x-16 lg:gap-y-5">
+        <p
+          className={`text-left text-xs tracking-[0.3em] uppercase lg:col-start-1 lg:row-start-1 ${isLocked ? "text-gold/50" : "text-gold"}`}
+        >
+          {dayLabel}
+        </p>
 
-          <div
-            className="relative mx-auto shrink-0 border border-border bg-surface p-2 shadow-[0_8px_40px_rgba(28,26,23,0.08)] lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:mx-0"
-            style={{
-              width: boardSize,
-              height: boardSize,
-            }}
-          >
+        <div
+          className="relative mx-auto shrink-0 border border-border bg-surface p-2 shadow-[0_8px_40px_rgba(28,26,23,0.08)] lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:mx-0"
+          style={{
+            width: boardSize,
+            height: boardSize,
+          }}
+        >
+          <div className={isLocked ? "h-full w-full blur-md" : "h-full w-full"}>
             <Chessboard
               key={dayIndex}
               options={{
@@ -221,11 +215,25 @@ export function DailyBoard() {
               }}
             />
           </div>
+          {isLocked && (
+            <div className="absolute inset-2 flex flex-col items-center justify-center bg-cream/72 backdrop-blur-[2px]">
+              <p className="font-display text-3xl tracking-[0.08em] text-ink/45 md:text-4xl">
+                Coming Soon
+              </p>
+              <p className="mt-2 text-[10px] tracking-[0.28em] text-gold/70 uppercase">
+                {dateLabel}
+              </p>
+            </div>
+          )}
+        </div>
 
-          <div className="flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden text-center lg:col-start-1 lg:row-start-2 lg:max-w-lg lg:text-left">
-            <h2 className="shrink-0 font-display text-4xl text-ink md:text-5xl">
-              {position.title}
-            </h2>
+        <div className="flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden text-center lg:col-start-1 lg:row-start-2 lg:max-w-lg lg:text-left">
+          <h2
+            className={`shrink-0 font-display text-4xl md:text-5xl ${isLocked ? "text-ink/35" : "text-ink"}`}
+          >
+            {isLocked ? "Coming Soon" : position.title}
+          </h2>
+          {!isLocked && (
             <p className="mt-3 shrink-0 text-sm tracking-[0.12em] text-gold uppercase">
               {toMoveLabel} to move
               {currentPly < maxPly && (
@@ -234,9 +242,15 @@ export function DailyBoard() {
                 </span>
               )}
             </p>
-            <p className="mt-5 shrink-0 font-display text-lg leading-[1.75] font-light text-ink/75 md:text-xl md:leading-[1.7]">
-              {position.description}
-            </p>
+          )}
+          <p
+            className={`mt-5 shrink-0 font-display text-lg leading-[1.75] font-light md:text-xl md:leading-[1.7] ${isLocked ? "text-muted" : "text-ink/75"}`}
+          >
+            {isLocked
+              ? `This day's historical position stays under wraps until it's live. Check back on ${dateLabel} to see it.`
+              : position.description}
+          </p>
+          {!isLocked && (
             <HistoricalGameRecord
               game={position}
               currentPly={currentPly}
@@ -246,9 +260,9 @@ export function DailyBoard() {
               canStepBack={currentPly > 0}
               canStepForward={currentPly < maxPly}
             />
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </section>
   )
 }
