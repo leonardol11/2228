@@ -89,7 +89,7 @@ export function HistoricalGameRecord({
             <p className="font-display text-lg leading-none text-ink">{game.result}</p>
           )}
           {metaLine && (
-            <p className="mt-1 max-w-[9rem] text-[9px] leading-snug tracking-[0.04em] text-muted">
+            <p className="mt-1 hidden max-w-[9rem] text-[9px] leading-snug tracking-[0.04em] text-muted sm:block">
               {metaLine}
             </p>
           )}
@@ -102,6 +102,12 @@ export function HistoricalGameRecord({
           )}
         </div>
       </div>
+
+      {metaLine && (
+        <p className="mt-1.5 shrink-0 text-center text-[9px] leading-snug tracking-[0.04em] text-muted sm:hidden">
+          {metaLine}
+        </p>
+      )}
 
       <div
         className={`mt-2 font-mono text-[11px] leading-relaxed text-ink/80 ${
