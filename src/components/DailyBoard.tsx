@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
 import { Chessboard } from "react-chessboard"
-import { dailyPositionCatalog, getDailyIndex } from "../data/dailyPositions"
+import {
+  daysAvailableBefore,
+  dailyPositionCatalog,
+  getDailyIndex,
+} from "../data/dailyPositions"
 import {
   fenAtPly,
   replayPlyCap,
@@ -62,8 +66,9 @@ function dateAtOffset(offsetDays: number): Date {
 const MAX_DAY_OFFSET = 1 // 0 = today, 1 = tomorrow
 
 export function DailyBoard() {
-  // Days ahead of today we're viewing: 0 = today, 1 = tomorrow.
+  // Days ahead of today we're viewing: negative = past, 0 = today, 1 = tomorrow.
   const [dayOffset, setDayOffset] = useState(0)
+  const minDayOffset = -daysAvailableBefore()
   const dayIndex = getDailyIndex(dateAtOffset(dayOffset))
   const position = dailyPositionCatalog[dayIndex]
   const maxPly = position ? replayPlyCap(position) : 0
@@ -111,11 +116,13 @@ export function DailyBoard() {
     return null
   }
 
-  const canGoPrev = dayOffset > 0
+  const canGoPrev = dayOffset > minDayOffset
   const canGoNext = dayOffset < MAX_DAY_OFFSET
   const boardFen = fenAtPly(position.moves, currentPly)
   const toMoveLabel = sideToMoveAtPly(currentPly)
   const dateLabel = dateLabelFormatter.format(dateAtOffset(dayOffset))
+  const dayLabel =
+    dayOffset === 0 ? "Today's position" : dayOffset > 0 ? "Tomorrow's position" : "Past position"
 
   return (
     <section className="flex w-full max-w-6xl flex-col px-4">
@@ -175,7 +182,7 @@ export function DailyBoard() {
 
       <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-x-16 lg:gap-y-5">
         <p className="text-left text-xs tracking-[0.3em] text-gold uppercase lg:col-start-1 lg:row-start-1">
-          {dayOffset === 0 ? "Today's position" : "Tomorrow's position"}
+          {dayLabel}
         </p>
 
         <div
