@@ -45,6 +45,9 @@ type GameOutcome = {
 const ghostButtonClass =
   "cursor-pointer rounded-full border border-white/70 bg-white/50 px-4 py-2 text-[10px] font-medium tracking-[0.14em] text-ink/70 uppercase transition-all duration-300 hover:bg-white/80 hover:text-ink sm:px-5 sm:py-2.5 sm:text-[11px]"
 
+// Guests get a taste of the board before we ask them to sign in.
+const ANONYMOUS_MOVE_LIMIT = 4
+
 function randomUserColor(): Color {
   return Math.random() < 0.5 ? "w" : "b"
 }
@@ -130,8 +133,11 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [showGameOverCard, setShowGameOverCard] = useState(true)
+  const [anonMoveCount, setAnonMoveCount] = useState(0)
   const gameRecordedRef = useRef(false)
   const drawTimeoutRef = useRef<number | null>(null)
+  const authPromptedRef = useRef(false)
+  const authGateReached = !user && anonMoveCount >= ANONYMOUS_MOVE_LIMIT
 
   const assignUserColor = useCallback((color: Color) => {
     userColorRef.current = color
@@ -268,6 +274,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       applyMove(activeBotColor)
       setFen(chess.fen())
       syncMoves()
+      setControlMessage(null)
 
       if (chess.isGameOver()) {
         setBotThinking(false)
@@ -321,6 +328,13 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     }
   }, [])
 
+  useEffect(() => {
+    if (authGateReached && !authPromptedRef.current) {
+      authPromptedRef.current = true
+      onSignIn()
+    }
+  }, [authGateReached, onSignIn])
+
   const onPieceDrop = useCallback(
     ({
       sourceSquare,
@@ -329,7 +343,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       sourceSquare: string
       targetSquare: string | null
     }) => {
-      if (phase !== "playing" || botThinking || !targetSquare) {
+      if (phase !== "playing" || botThinking || !targetSquare || authGateReached) {
         return false
       }
 
@@ -356,6 +370,10 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         setFen(chess.fen())
         syncMoves()
 
+        if (!user) {
+          setAnonMoveCount((count) => count + 1)
+        }
+
         if (chess.isGameOver()) {
           void finishGame(resultFromChess(chess, userColor))
           return true
@@ -367,19 +385,19 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         return false
       }
     },
-    [applyMove, botThinking, botName, finishGame, phase, requestBotMove, syncMoves, userColor],
+    [applyMove, authGateReached, botThinking, botName, finishGame, phase, requestBotMove, syncMoves, user, userColor],
   )
 
   const canDragPiece = useCallback(
     ({ piece }: { piece: { pieceType: string } }) => {
-      if (phase !== "playing" || botThinking) {
+      if (phase !== "playing" || botThinking || authGateReached) {
         return false
       }
 
       const pieceColor = piece.pieceType[0]
       return pieceColor === userColor && chessRef.current.turn() === userColor
     },
-    [botThinking, phase, userColor],
+    [authGateReached, botThinking, phase, userColor],
   )
 
   const chessboardOptions = useMemo(
@@ -464,7 +482,9 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     setShowGameOverCard(true)
     setBotThinking(false)
     setControlMessage(null)
+    setAnonMoveCount(0)
     gameRecordedRef.current = false
+    authPromptedRef.current = false
     resetClock()
     setPhase("loading")
 
@@ -521,23 +541,8 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
           ? "Your move"
           : null)
 
-  if (!authLoading && !user) {
-    return (
-      <section className="flex w-full max-w-lg flex-col items-center px-4 text-center">
-        <p className="font-display text-3xl text-ink md:text-4xl">Start a ranked game</p>
-        <p className="mt-3 max-w-sm text-sm leading-relaxed text-ink/75">
-          Sign in to play a rated game and track your progress.
-        </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <button type="button" className={ghostButtonClass} onClick={onSignIn}>
-            Sign In
-          </button>
-          <button type="button" className={ghostButtonClass} onClick={onExit}>
-            Back
-          </button>
-        </div>
-      </section>
-    )
+  if (authLoading) {
+    return null
   }
 
   if (user && gamesLoading) {
@@ -585,6 +590,28 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
                 <p className="text-[10px] tracking-[0.28em] text-gold uppercase">
                   Loading engine
                 </p>
+              </div>
+            )}
+
+            {authGateReached && phase === "playing" && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-cream/75 p-4 backdrop-blur-[3px]">
+                <div className="relative mx-auto flex w-[22rem] max-w-full flex-col items-center overflow-hidden rounded-2xl border border-white/70 bg-white/55 px-7 py-6 text-center shadow-[0_20px_70px_rgba(28,26,23,0.14),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-gold/14 to-transparent" />
+
+                  <p className="relative font-display text-xl text-ink">
+                    Sign in to keep playing
+                  </p>
+                  <p className="relative mt-2 max-w-xs text-sm leading-relaxed text-ink/75">
+                    You've played your {ANONYMOUS_MOVE_LIMIT} free moves. Sign in to finish the game and start tracking your rating.
+                  </p>
+                  <button
+                    type="button"
+                    className={`${ghostButtonClass} relative mt-4 w-full`}
+                    onClick={onSignIn}
+                  >
+                    Sign In
+                  </button>
+                </div>
               </div>
             )}
 

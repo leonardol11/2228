@@ -43,7 +43,7 @@ export function GameChat({
     {
       id: "welcome",
       sender: "system",
-      text: `${clockLabel} rated game vs ${botName}`,
+      text: `${clockLabel} ${signedIn ? "rated" : "casual"} game vs ${botName}`,
     },
   ])
   const [draft, setDraft] = useState("")
@@ -93,7 +93,7 @@ export function GameChat({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/55 bg-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
       <div className="shrink-0 border-b border-white/50 px-3 py-2.5">
         <p className="text-xs font-medium text-ink">
-          {clockLabel} · Rated
+          {clockLabel} · {signedIn ? "Rated" : "Casual"}
         </p>
         <p className="mt-0.5 text-[11px] text-muted">
           {userName} vs {botName}
