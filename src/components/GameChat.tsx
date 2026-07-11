@@ -6,6 +6,12 @@ export type ChatMessage = {
   text: string
 }
 
+/** Wire to a live opponent; when absent the local bot answers instead. */
+export type RemoteChat = {
+  send: (text: string) => void
+  subscribe: (onMessage: (text: string) => void) => () => void
+}
+
 type GameChatProps = {
   botName: string
   userName: string
@@ -13,6 +19,7 @@ type GameChatProps = {
   signedIn: boolean
   onSignIn: () => void
   gameOver: boolean
+  remoteChat?: RemoteChat | null
 }
 
 const QUICK_MESSAGES = ["HI", "GL", "HF", "U2"] as const
@@ -37,6 +44,7 @@ export function GameChat({
   signedIn,
   onSignIn,
   gameOver,
+  remoteChat = null,
 }: GameChatProps) {
   const [enabled, setEnabled] = useState(true)
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -62,6 +70,19 @@ export function GameChat({
     }
   }, [])
 
+  useEffect(() => {
+    if (!remoteChat) {
+      return
+    }
+
+    return remoteChat.subscribe((text) => {
+      setMessages((prev) => [
+        ...prev,
+        { id: `${Date.now()}-${Math.random()}`, sender: "bot", text },
+      ])
+    })
+  }, [remoteChat])
+
   function pushMessage(sender: ChatMessage["sender"], text: string) {
     setMessages((prev) => [
       ...prev,
@@ -77,6 +98,11 @@ export function GameChat({
 
     pushMessage("user", trimmed)
     setDraft("")
+
+    if (remoteChat) {
+      remoteChat.send(trimmed)
+      return
+    }
 
     const quickKey = QUICK_MESSAGES.find((key) => key.toLowerCase() === trimmed.toLowerCase())
     replyTimeoutRef.current = window.setTimeout(() => {

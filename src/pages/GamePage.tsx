@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Chessboard } from "react-chessboard"
 import { Chess, type Color } from "chess.js"
-import { GameChat } from "../components/GameChat"
+import { GameChat, type RemoteChat } from "../components/GameChat"
 import { GameSidebar } from "../components/GameSidebar"
 import { useAuth } from "../context/AuthContext"
 import {
@@ -14,7 +14,12 @@ import {
   boardStyles,
   notationStyles,
 } from "../lib/chessBoardStyles"
-import { CLOCK_LABEL, useChessClock } from "../lib/chessClock"
+import {
+  CLOCK_INCREMENT_MS,
+  CLOCK_INITIAL_MS,
+  CLOCK_LABEL,
+  useChessClock,
+} from "../lib/chessClock"
 import {
   BOT_OPPONENT_RD,
   formatRatingChange,
@@ -22,6 +27,22 @@ import {
   scoreFromResult,
   updateRatingAfterGame,
 } from "../lib/glicko"
+import {
+  claimTimeout,
+  fetchActiveGameFor,
+  fetchLiveGame,
+  finishLiveGame,
+  leaveMatchmaking,
+  openGameChannel,
+  parseMoves,
+  pollMatchmaking,
+  sendLiveMove,
+  subscribeToLiveGame,
+  subscribeToMatch,
+  type GameChannel,
+  type GameChannelEvent,
+  type LiveGameRow,
+} from "../lib/multiplayer"
 import { recordGame } from "../lib/recordGame"
 import { getStockfishEngine } from "../lib/stockfishEngine"
 import {
@@ -35,18 +56,33 @@ type GamePageProps = {
   onSignIn: () => void
 }
 
-type GamePhase = "loading" | "playing" | "game_over"
+type GamePhase = "matchmaking" | "loading" | "playing" | "game_over"
 
 type GameOutcome = {
   result: GameResult
   reason: string
 }
 
+type Opponent =
+  | { kind: "bot" }
+  | {
+      kind: "human"
+      gameId: string
+      id: string
+      name: string
+      rating: number
+      deviation: number
+    }
+
 const ghostButtonClass =
   "cursor-pointer rounded-full border border-white/70 bg-white/50 px-4 py-2 text-[10px] font-medium tracking-[0.14em] text-ink/70 uppercase transition-all duration-300 hover:bg-white/80 hover:text-ink sm:px-5 sm:py-2.5 sm:text-[11px]"
 
 // Guests get a taste of the board before we ask them to sign in.
 const ANONYMOUS_MOVE_LIMIT = 4
+
+const MATCHMAKING_POLL_MS = 4000
+const MATCHMAKING_TIMEOUT_MS = 60_000
+const MATCH_BANNER_MS = 1400
 
 function randomUserColor(): Color {
   return Math.random() < 0.5 ? "w" : "b"
@@ -76,6 +112,22 @@ function resultFromChess(chess: Chess, userColor: Color): GameOutcome {
   return { result: "draw", reason: "Draw" }
 }
 
+function winnerForOutcome(outcome: GameOutcome, userColor: Color): Color | null {
+  if (outcome.result === "draw") return null
+  const opponentColor: Color = userColor === "w" ? "b" : "w"
+  return outcome.result === "win" ? userColor : opponentColor
+}
+
+function outcomeFromRow(row: LiveGameRow, userColor: Color): GameOutcome {
+  if (row.winner === null) {
+    return { result: "draw", reason: row.end_reason ?? "Draw" }
+  }
+  return {
+    result: row.winner === userColor ? "win" : "loss",
+    reason: row.end_reason ?? "Game over",
+  }
+}
+
 function applyUciMove(chess: Chess, uci: string): boolean {
   const from = uci.slice(0, 2)
   const to = uci.slice(2, 4)
@@ -87,6 +139,12 @@ function applyUciMove(chess: Chess, uci: string): boolean {
   } catch {
     return false
   }
+}
+
+function formatSearchTime(seconds: number): string {
+  const minutes = Math.floor(seconds / 60)
+  const rest = seconds % 60
+  return `${minutes}:${rest.toString().padStart(2, "0")}`
 }
 
 export function GamePage({ onExit, onSignIn }: GamePageProps) {
@@ -113,17 +171,25 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const botName = botNameForRating(botRating)
   const userName = profile?.username ?? "You"
   const userTitle = ratingTitle(userRating)
-  const botTitle = ratingTitle(botRating)
   const userColorLabel = userColor === "w" ? "white" : "black"
 
   const chessRef = useRef(new Chess(position.fen))
   const [fen, setFen] = useState(position.fen)
   const [moves, setMoves] = useState<string[]>([])
   const [phase, setPhase] = useState<GamePhase>("loading")
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
+  const [opponent, setOpponent] = useState<Opponent | null>(null)
+  const opponentRef = useRef<Opponent | null>(null)
+  const [engineReady, setEngineReady] = useState(false)
   const [botThinking, setBotThinking] = useState(false)
   const [controlMessage, setControlMessage] = useState<string | null>(null)
   const [engineError, setEngineError] = useState<string | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const [outcome, setOutcome] = useState<GameOutcome | null>(null)
+  const [searchSeconds, setSearchSeconds] = useState(0)
+  const [matchBanner, setMatchBanner] = useState<string | null>(null)
+  const [incomingDrawOffer, setIncomingDrawOffer] = useState(false)
   const [ratingResult, setRatingResult] = useState<{
     previousRating: number
     newRating: number
@@ -136,7 +202,11 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const [anonMoveCount, setAnonMoveCount] = useState(0)
   const gameRecordedRef = useRef(false)
   const drawTimeoutRef = useRef<number | null>(null)
+  const controlMessageTimeoutRef = useRef<number | null>(null)
   const authPromptedRef = useRef(false)
+  const unsubGameRef = useRef<(() => void) | null>(null)
+  const gameChannelRef = useRef<GameChannel | null>(null)
+  const chatListenersRef = useRef(new Set<(text: string) => void>())
   const authGateReached = !user && anonMoveCount >= ANONYMOUS_MOVE_LIMIT
 
   const assignUserColor = useCallback((color: Color) => {
@@ -148,12 +218,28 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const boardOrientation = (userColor === "w" ? "white" : "black") as "white" | "black"
   const activeColor = phase === "playing" ? chessRef.current.turn() : null
 
+  const opponentDisplay =
+    opponent?.kind === "human"
+      ? {
+          name: opponent.name,
+          rating: opponent.rating,
+          title: ratingTitle(opponent.rating),
+        }
+      : opponent?.kind === "bot"
+        ? { name: botName, rating: botRating, title: ratingTitle(botRating) }
+        : { name: "Opponent", rating: userRating, title: ratingTitle(userRating) }
+
   const finishGame = useCallback(
     async (nextOutcome: GameOutcome) => {
+      if (phaseRef.current === "game_over") {
+        return
+      }
+
       setOutcome(nextOutcome)
       setPhase("game_over")
       setShowGameOverCard(true)
       setControlMessage(null)
+      setIncomingDrawOffer(false)
 
       if (drawTimeoutRef.current !== null) {
         window.clearTimeout(drawTimeoutRef.current)
@@ -164,11 +250,17 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         return
       }
 
+      const currentOpponent = opponentRef.current
+      const isHuman = currentOpponent?.kind === "human"
+      const opponentName = isHuman ? currentOpponent.name : botName
+      const opponentRating = isHuman ? currentOpponent.rating : botRating
+      const opponentRd = isHuman ? currentOpponent.deviation : BOT_OPPONENT_RD
+
       const player = playerRatingSnapshot(profile)
 
       const preview = updateRatingAfterGame(
         player,
-        { rating: botRating, deviation: BOT_OPPONENT_RD },
+        { rating: opponentRating, deviation: opponentRd },
         scoreFromResult(nextOutcome.result),
       )
 
@@ -184,11 +276,12 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
 
       const result = await recordGame({
         userId: user.id,
-        opponentName: botName,
+        opponentName,
         result: nextOutcome.result,
         userRating: player.rating,
         userRatingDeviation: player.deviation,
-        opponentRating: botRating,
+        opponentRating,
+        opponentRatingDeviation: opponentRd,
         positionTitle: position.title,
         positionDate: new Date().toISOString().slice(0, 10),
       })
@@ -225,21 +318,30 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     [botName, botRating, patchProfileRating, position.title, profile, refreshGames, refreshLeaderboard, refreshProfile, user],
   )
 
+  const finishGameRef = useRef(finishGame)
+  finishGameRef.current = finishGame
+
   const handleFlag = useCallback(
     (flaggedColor: Color) => {
-      if (phase === "game_over") {
+      if (phaseRef.current === "game_over") {
         return
       }
 
-      void finishGame({
-        result: flaggedColor === userColor ? "loss" : "win",
+      const currentOpponent = opponentRef.current
+      if (currentOpponent?.kind === "human") {
+        // The server double-checks the clocks before recording the timeout.
+        void claimTimeout(currentOpponent.gameId)
+      }
+
+      void finishGameRef.current({
+        result: flaggedColor === userColorRef.current ? "loss" : "win",
         reason: "Time forfeit",
       })
     },
-    [finishGame, phase, userColor],
+    [],
   )
 
-  const { times, applyMove, revertMove, reset: resetClock } = useChessClock({
+  const { times, applyMove, revertMove, reset: resetClock, syncTimes } = useChessClock({
     activeColor,
     running: phase === "playing",
     onFlag: handleFlag,
@@ -247,6 +349,31 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
 
   const syncMoves = useCallback(() => {
     setMoves(chessRef.current.history())
+  }, [])
+
+  const syncClocksFromRow = useCallback(
+    (row: LiveGameRow) => {
+      const lastMoveAt = new Date(row.last_move_at).getTime()
+      const elapsed =
+        row.status === "active" ? Math.max(0, Date.now() - lastMoveAt) : 0
+
+      syncTimes({
+        w: row.turn === "w" ? row.white_ms - elapsed : row.white_ms,
+        b: row.turn === "b" ? row.black_ms - elapsed : row.black_ms,
+      })
+    },
+    [syncTimes],
+  )
+
+  const flashControlMessage = useCallback((message: string, durationMs = 2500) => {
+    setControlMessage(message)
+    if (controlMessageTimeoutRef.current !== null) {
+      window.clearTimeout(controlMessageTimeoutRef.current)
+    }
+    controlMessageTimeoutRef.current = window.setTimeout(() => {
+      controlMessageTimeoutRef.current = null
+      setControlMessage(null)
+    }, durationMs)
   }, [])
 
   const requestBotMove = useCallback(async () => {
@@ -293,6 +420,96 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const requestBotMoveRef = useRef(requestBotMove)
   requestBotMoveRef.current = requestBotMove
 
+  // ── Live game sync ──────────────────────────────────────────────────────────
+
+  const applyRemoteMoves = useCallback(
+    (row: LiveGameRow) => {
+      const chess = chessRef.current
+      const uciMoves = parseMoves(row.moves)
+      let applied = false
+
+      for (let i = chess.history().length; i < uciMoves.length; i++) {
+        if (!applyUciMove(chess, uciMoves[i])) {
+          console.error("Received an illegal move from the server:", uciMoves[i])
+          break
+        }
+        applied = true
+      }
+
+      if (applied) {
+        setFen(chess.fen())
+        syncMoves()
+        setControlMessage(null)
+      }
+
+      syncClocksFromRow(row)
+    },
+    [syncClocksFromRow, syncMoves],
+  )
+
+  const handleLiveGameUpdate = useCallback(
+    (row: LiveGameRow) => {
+      if (phaseRef.current === "game_over") {
+        return
+      }
+
+      applyRemoteMoves(row)
+
+      if (row.status === "finished") {
+        void finishGameRef.current(outcomeFromRow(row, userColorRef.current))
+        return
+      }
+
+      const chess = chessRef.current
+      if (chess.isGameOver()) {
+        const nextOutcome = resultFromChess(chess, userColorRef.current)
+        const currentOpponent = opponentRef.current
+        if (currentOpponent?.kind === "human") {
+          void finishLiveGame(
+            currentOpponent.gameId,
+            winnerForOutcome(nextOutcome, userColorRef.current),
+            nextOutcome.reason,
+          )
+        }
+        void finishGameRef.current(nextOutcome)
+      }
+    },
+    [applyRemoteMoves],
+  )
+
+  const handleLiveGameUpdateRef = useRef(handleLiveGameUpdate)
+  handleLiveGameUpdateRef.current = handleLiveGameUpdate
+
+  const handleChannelEvent = useCallback(
+    (event: GameChannelEvent) => {
+      if (event.type === "chat") {
+        chatListenersRef.current.forEach((listener) => listener(event.text))
+        return
+      }
+
+      if (phaseRef.current !== "playing") {
+        return
+      }
+
+      if (event.type === "draw-offer") {
+        setIncomingDrawOffer(true)
+        return
+      }
+
+      if (event.type === "draw-decline") {
+        const name =
+          opponentRef.current?.kind === "human" ? opponentRef.current.name : "Opponent"
+        flashControlMessage(`${name} declined the draw`)
+      }
+    },
+    [flashControlMessage],
+  )
+
+  const handleChannelEventRef = useRef(handleChannelEvent)
+  handleChannelEventRef.current = handleChannelEvent
+
+  // ── Engine preload (needed for guests and the 60s bot fallback) ─────────────
+
   useEffect(() => {
     let cancelled = false
 
@@ -300,19 +517,14 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       .init()
       .then(() => {
         if (cancelled) return
-
         setEngineError(null)
-        setPhase("playing")
-
-        if (chessRef.current.turn() === botColorRef.current) {
-          void requestBotMoveRef.current()
-        }
+        setEngineReady(true)
       })
       .catch((error: unknown) => {
         if (cancelled) return
         console.error(error)
         setEngineError("Could not load the chess engine.")
-        setPhase("playing")
+        setEngineReady(true)
       })
 
     return () => {
@@ -320,10 +532,213 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     }
   }, [])
 
+  // Guests skip matchmaking and play the bot directly.
+  useEffect(() => {
+    if (authLoading || user || opponentRef.current) {
+      return
+    }
+    opponentRef.current = { kind: "bot" }
+    setOpponent({ kind: "bot" })
+  }, [authLoading, user])
+
+  // Promote a pending bot game to "playing" once the engine is up.
+  useEffect(() => {
+    if (phase !== "loading" || !engineReady || opponent?.kind !== "bot") {
+      return
+    }
+
+    setPhase("playing")
+    if (chessRef.current.turn() === botColorRef.current) {
+      void requestBotMoveRef.current()
+    }
+  }, [engineReady, opponent, phase])
+
+  // ── Matchmaking ─────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (authLoading || !user || gamesLoading || alreadyPlayedToday) {
+      return
+    }
+    if (opponentRef.current || phaseRef.current === "game_over") {
+      return
+    }
+
+    let cancelled = false
+    let matched = false
+    let pollInterval: number | null = null
+    let secondsInterval: number | null = null
+    let fallbackTimeout: number | null = null
+    let bannerTimeout: number | null = null
+    let unsubQueue: (() => void) | null = null
+
+    const params = {
+      startFen: position.fen,
+      turn: (position.fen.split(" ")[1] === "b" ? "b" : "w") as Color,
+      initialMs: CLOCK_INITIAL_MS,
+      incrementMs: CLOCK_INCREMENT_MS,
+      positionTitle: position.title,
+      positionDate: todayStr,
+    }
+
+    const stopSearching = () => {
+      if (pollInterval !== null) window.clearInterval(pollInterval)
+      if (secondsInterval !== null) window.clearInterval(secondsInterval)
+      if (fallbackTimeout !== null) window.clearTimeout(fallbackTimeout)
+      pollInterval = null
+      secondsInterval = null
+      fallbackTimeout = null
+      unsubQueue?.()
+      unsubQueue = null
+    }
+
+    const revealOpponent = (label: string, onRevealed: () => void) => {
+      setMatchBanner(label)
+      bannerTimeout = window.setTimeout(() => {
+        bannerTimeout = null
+        if (cancelled) return
+        setMatchBanner(null)
+        onRevealed()
+      }, MATCH_BANNER_MS)
+    }
+
+    const enterGame = async (gameId: string, knownRow?: LiveGameRow) => {
+      if (matched || cancelled) return
+      matched = true
+      stopSearching()
+
+      const row = knownRow ?? (await fetchLiveGame(gameId))
+      if (cancelled) return
+
+      if (!row || row.status !== "active") {
+        matched = false
+        startBotGame()
+        return
+      }
+
+      const myColor: Color = row.white_id === user.id ? "w" : "b"
+      assignUserColor(myColor)
+
+      const chess = new Chess(row.start_fen)
+      for (const uci of parseMoves(row.moves)) {
+        applyUciMove(chess, uci)
+      }
+      chessRef.current = chess
+      setFen(chess.fen())
+      setMoves(chess.history())
+
+      const nextOpponent: Opponent = {
+        kind: "human",
+        gameId,
+        id: myColor === "w" ? row.black_id : row.white_id,
+        name: myColor === "w" ? row.black_username : row.white_username,
+        rating: myColor === "w" ? row.black_rating : row.white_rating,
+        deviation: myColor === "w" ? row.black_rd : row.white_rd,
+      }
+      opponentRef.current = nextOpponent
+      setOpponent(nextOpponent)
+
+      syncClocksFromRow(row)
+
+      unsubGameRef.current = subscribeToLiveGame(gameId, (updated) => {
+        handleLiveGameUpdateRef.current(updated)
+      })
+      gameChannelRef.current = openGameChannel(gameId, user.id, (event) => {
+        handleChannelEventRef.current(event)
+      })
+
+      revealOpponent(`${nextOpponent.name} · ${nextOpponent.rating}`, () => {
+        setPhase("playing")
+      })
+    }
+
+    const startBotGame = () => {
+      if (matched || cancelled) return
+      matched = true
+      stopSearching()
+
+      opponentRef.current = { kind: "bot" }
+      setOpponent({ kind: "bot" })
+
+      // Same reveal as a human match — the bot plays under a human name.
+      revealOpponent(`${botName} · ${botRating}`, () => {
+        setPhase("loading")
+      })
+    }
+
+    const poll = async () => {
+      const gameId = await pollMatchmaking(params)
+      if (!cancelled && gameId) {
+        void enterGame(gameId)
+      }
+    }
+
+    const run = async () => {
+      setPhase("matchmaking")
+      setSearchSeconds(0)
+
+      // Resume a game that's still running (e.g. after a refresh).
+      const active = await fetchActiveGameFor(user.id)
+      if (cancelled) return
+
+      if (active) {
+        void enterGame(active.id, active)
+        return
+      }
+
+      unsubQueue = subscribeToMatch(user.id, (gameId) => {
+        void enterGame(gameId)
+      })
+
+      void poll()
+      pollInterval = window.setInterval(() => void poll(), MATCHMAKING_POLL_MS)
+      secondsInterval = window.setInterval(
+        () => setSearchSeconds((s) => s + 1),
+        1000,
+      )
+      fallbackTimeout = window.setTimeout(() => {
+        void (async () => {
+          // A match created in this same instant still wins over the bot.
+          const lastChanceGameId = await leaveMatchmaking()
+          if (cancelled) return
+          if (lastChanceGameId) {
+            void enterGame(lastChanceGameId)
+          } else {
+            startBotGame()
+          }
+        })()
+      }, MATCHMAKING_TIMEOUT_MS)
+    }
+
+    void run()
+
+    return () => {
+      cancelled = true
+      stopSearching()
+      if (bannerTimeout !== null) window.clearTimeout(bannerTimeout)
+      if (!matched) {
+        void leaveMatchmaking()
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, gamesLoading, alreadyPlayedToday])
+
+  // Tear down live game wiring when leaving the page.
+  useEffect(() => {
+    return () => {
+      unsubGameRef.current?.()
+      unsubGameRef.current = null
+      gameChannelRef.current?.close()
+      gameChannelRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
     return () => {
       if (drawTimeoutRef.current !== null) {
         window.clearTimeout(drawTimeoutRef.current)
+      }
+      if (controlMessageTimeoutRef.current !== null) {
+        window.clearTimeout(controlMessageTimeoutRef.current)
       }
     }
   }, [])
@@ -334,6 +749,24 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       onSignIn()
     }
   }, [authGateReached, onSignIn])
+
+  const remoteChat = useMemo<RemoteChat | null>(() => {
+    if (opponent?.kind !== "human") {
+      return null
+    }
+
+    return {
+      send: (text: string) => {
+        gameChannelRef.current?.send({ type: "chat", text })
+      },
+      subscribe: (onMessage: (text: string) => void) => {
+        chatListenersRef.current.add(onMessage)
+        return () => {
+          chatListenersRef.current.delete(onMessage)
+        }
+      },
+    }
+  }, [opponent])
 
   const onPieceDrop = useCallback(
     ({
@@ -363,16 +796,49 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
           return false
         }
 
-        setControlMessage(
-          chessRef.current.turn() === userColor ? "Your move" : `${botName} is thinking…`,
-        )
-        applyMove(userColor)
         setFen(chess.fen())
         syncMoves()
 
         if (!user) {
           setAnonMoveCount((count) => count + 1)
         }
+
+        const currentOpponent = opponentRef.current
+
+        if (currentOpponent?.kind === "human") {
+          const uci = move.from + move.to + (move.promotion ?? "")
+          const fenAfterMove = chess.fen()
+          const gameOver = chess.isGameOver()
+          const nextOutcome = gameOver ? resultFromChess(chess, userColor) : null
+
+          void (async () => {
+            const ok = await sendLiveMove(currentOpponent.gameId, uci, fenAfterMove)
+            if (!ok) {
+              setSyncError(
+                "Connection issue — your move may not have reached your opponent.",
+              )
+              return
+            }
+            setSyncError(null)
+            if (nextOutcome) {
+              await finishLiveGame(
+                currentOpponent.gameId,
+                winnerForOutcome(nextOutcome, userColor),
+                nextOutcome.reason,
+              )
+            }
+          })()
+
+          if (nextOutcome) {
+            void finishGame(nextOutcome)
+          }
+          return true
+        }
+
+        setControlMessage(
+          chess.turn() === userColor ? "Your move" : `${botName} is thinking…`,
+        )
+        applyMove(userColor)
 
         if (chess.isGameOver()) {
           void finishGame(resultFromChess(chess, userColor))
@@ -425,11 +891,28 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       return
     }
 
+    const currentOpponent = opponentRef.current
+    if (currentOpponent?.kind === "human") {
+      void finishLiveGame(
+        currentOpponent.gameId,
+        userColor === "w" ? "b" : "w",
+        "Resignation",
+      )
+    }
+
     void finishGame({ result: "loss", reason: "Resignation" })
   }
 
   function handleOfferDraw() {
     if (phase !== "playing" || botThinking || moves.length < 4) {
+      return
+    }
+
+    const currentOpponent = opponentRef.current
+
+    if (currentOpponent?.kind === "human") {
+      gameChannelRef.current?.send({ type: "draw-offer" })
+      flashControlMessage("Draw offer sent")
       return
     }
 
@@ -443,13 +926,29 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         return
       }
 
-      setControlMessage(`${botName} declined the draw`)
-      window.setTimeout(() => setControlMessage(null), 2500)
+      flashControlMessage(`${botName} declined the draw`)
     }, 900)
   }
 
+  function handleAcceptDraw() {
+    const currentOpponent = opponentRef.current
+    if (currentOpponent?.kind !== "human" || phase !== "playing") {
+      return
+    }
+
+    setIncomingDrawOffer(false)
+    void finishLiveGame(currentOpponent.gameId, null, "Draw by agreement")
+    void finishGame({ result: "draw", reason: "Draw by agreement" })
+  }
+
+  function handleDeclineDraw() {
+    setIncomingDrawOffer(false)
+    gameChannelRef.current?.send({ type: "draw-decline" })
+  }
+
   function handleTakeBack() {
-    if (phase !== "playing" || botThinking) {
+    // Take-backs only exist in casual guest games.
+    if (phase !== "playing" || botThinking || user) {
       return
     }
 
@@ -464,13 +963,11 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     revertMove(userColor)
     setFen(chess.fen())
     syncMoves()
-    setControlMessage("Move taken back")
-    window.setTimeout(() => setControlMessage(null), 2000)
+    flashControlMessage("Move taken back", 2000)
   }
 
   function resetGame() {
     const nextUserColor = randomUserColor()
-    const nextBotColor = nextUserColor === "w" ? "b" : "w"
 
     assignUserColor(nextUserColor)
     chessRef.current = new Chess(position.fen)
@@ -482,20 +979,19 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     setShowGameOverCard(true)
     setBotThinking(false)
     setControlMessage(null)
+    setSyncError(null)
+    setIncomingDrawOffer(false)
     setAnonMoveCount(0)
     gameRecordedRef.current = false
     authPromptedRef.current = false
+    unsubGameRef.current?.()
+    unsubGameRef.current = null
+    gameChannelRef.current?.close()
+    gameChannelRef.current = null
+    opponentRef.current = { kind: "bot" }
+    setOpponent({ kind: "bot" })
     resetClock()
     setPhase("loading")
-
-    void getStockfishEngine()
-      .init()
-      .then(() => {
-        setPhase("playing")
-        if (chessRef.current.turn() === nextBotColor) {
-          void requestBotMove()
-        }
-      })
   }
 
   const opponentClockMs = times[botColor]
@@ -505,7 +1001,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const controlsDisabled = phase !== "playing" || botThinking
   const canOfferDraw = moves.length >= 4
   const canTakeBack =
-    moves.length >= 2 && chessRef.current.turn() === userColor
+    !user && moves.length >= 2 && chessRef.current.turn() === userColor
 
   const gameOverRating = useMemo(() => {
     if (ratingResult) {
@@ -519,7 +1015,11 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     const player = playerRatingSnapshot(profile)
     const preview = updateRatingAfterGame(
       player,
-      { rating: botRating, deviation: BOT_OPPONENT_RD },
+      {
+        rating: opponentDisplay.rating,
+        deviation:
+          opponent?.kind === "human" ? opponent.deviation : BOT_OPPONENT_RD,
+      },
       scoreFromResult(outcome.result),
     )
 
@@ -529,17 +1029,19 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       ratingChange: preview.change,
       isProvisional: isProvisionalRating(preview.deviation),
     }
-  }, [botRating, outcome, phase, profile, ratingResult, user])
+  }, [opponent, opponentDisplay.rating, outcome, phase, profile, ratingResult, user])
 
   const statusMessage =
     controlMessage ??
-    (phase === "game_over" && gameOverRating
-      ? `${gameOverRating.newRating}${gameOverRating.isProvisional ? "?" : ""} (${formatRatingChange(gameOverRating.ratingChange)})`
-      : botThinking && phase === "playing"
-        ? `${botName} is thinking…`
-        : phase === "playing" && isUserTurn
-          ? "Your move"
-          : null)
+    (phase === "matchmaking"
+      ? "Finding an opponent…"
+      : phase === "game_over" && gameOverRating
+        ? `${gameOverRating.newRating}${gameOverRating.isProvisional ? "?" : ""} (${formatRatingChange(gameOverRating.ratingChange)})`
+        : phase === "playing" && isOpponentTurn
+          ? `${opponentDisplay.name} is thinking…`
+          : phase === "playing" && isUserTurn
+            ? "Your move"
+            : null)
 
   if (authLoading) {
     return null
@@ -570,12 +1072,14 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:overflow-hidden">
         <aside className="hidden h-[min(calc(100dvh-7rem),820px)] min-h-0 min-w-0 flex-col lg:flex">
           <GameChat
-            botName={botName}
+            key={opponentDisplay.name}
+            botName={opponentDisplay.name}
             userName={userName}
             clockLabel={CLOCK_LABEL}
             signedIn={Boolean(user)}
             onSignIn={onSignIn}
             gameOver={phase === "game_over"}
+            remoteChat={remoteChat}
           />
         </aside>
 
@@ -590,6 +1094,68 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
                 <p className="text-[10px] tracking-[0.28em] text-gold uppercase">
                   Loading engine
                 </p>
+              </div>
+            )}
+
+            {(phase === "matchmaking" || matchBanner) && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-cream/75 p-4 backdrop-blur-[3px]">
+                <div className="relative mx-auto flex w-[22rem] max-w-full flex-col items-center overflow-hidden rounded-2xl border border-white/70 bg-white/55 px-7 py-6 text-center shadow-[0_20px_70px_rgba(28,26,23,0.14),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-gold/14 to-transparent" />
+
+                  {matchBanner ? (
+                    <>
+                      <p className="relative text-[10px] tracking-[0.28em] text-gold uppercase">
+                        Opponent found
+                      </p>
+                      <p className="relative mt-2 font-display text-xl text-ink">
+                        {matchBanner}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="relative text-[10px] tracking-[0.28em] text-gold uppercase">
+                        Finding an opponent
+                      </p>
+                      <p className="relative mt-2 font-display text-2xl tabular-nums text-ink">
+                        {formatSearchTime(searchSeconds)}
+                      </p>
+                      <p className="relative mt-2 max-w-xs text-xs leading-relaxed text-ink/65">
+                        Pairing you with a player near your rating.
+                      </p>
+                      <button
+                        type="button"
+                        className={`${ghostButtonClass} relative mt-4`}
+                        onClick={onExit}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {incomingDrawOffer && phase === "playing" && (
+              <div className="absolute inset-x-0 top-3 z-10 flex justify-center px-4">
+                <div className="flex items-center gap-3 rounded-full border border-white/70 bg-white/85 px-4 py-2 shadow-[0_10px_35px_rgba(28,26,23,0.14)] backdrop-blur-xl">
+                  <p className="text-xs text-ink">
+                    {opponentDisplay.name} offers a draw
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAcceptDraw}
+                    className="cursor-pointer rounded-full bg-emerald-600/90 px-3 py-1 text-[10px] font-medium tracking-[0.1em] text-white uppercase transition-colors hover:bg-emerald-600"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeclineDraw}
+                    className="cursor-pointer rounded-full border border-ink/15 bg-white/70 px-3 py-1 text-[10px] font-medium tracking-[0.1em] text-ink/70 uppercase transition-colors hover:bg-white"
+                  >
+                    Decline
+                  </button>
+                </div>
               </div>
             )}
 
@@ -710,9 +1276,9 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
 
         <aside className="flex w-full min-h-0 min-w-0 shrink-0 flex-col pb-2 lg:h-[min(calc(100dvh-7rem),820px)] lg:pb-0">
           <GameSidebar
-            opponentName={botName}
-            opponentTitle={botTitle}
-            opponentRating={botRating}
+            opponentName={opponentDisplay.name}
+            opponentTitle={opponentDisplay.title}
+            opponentRating={opponentDisplay.rating}
             opponentClockMs={opponentClockMs}
             opponentActive={isOpponentTurn && phase === "playing"}
             userName={userName}
@@ -724,7 +1290,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
             userColorLabel={userColorLabel}
             moves={moves}
             statusMessage={statusMessage}
-            phase={phase}
+            phase={phase === "matchmaking" ? "loading" : phase}
             controlsDisabled={controlsDisabled}
             canOfferDraw={canOfferDraw}
             canTakeBack={canTakeBack}
@@ -735,9 +1301,9 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         </aside>
       </div>
 
-      {engineError && (
+      {(engineError || syncError) && (
         <p className="mt-2 shrink-0 rounded-lg border border-red-200/80 bg-red-50/80 px-3 py-2 text-center text-xs text-red-800/90">
-          {engineError}
+          {engineError ?? syncError}
         </p>
       )}
     </section>

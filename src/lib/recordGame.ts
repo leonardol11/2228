@@ -14,6 +14,7 @@ type RecordGameInput = {
   userRating: number
   userRatingDeviation: number
   opponentRating: number
+  opponentRatingDeviation?: number
   positionTitle: string
   positionDate: string
 }
@@ -57,13 +58,14 @@ export async function recordGame({
   userRating,
   userRatingDeviation,
   opponentRating,
+  opponentRatingDeviation = BOT_OPPONENT_RD,
   positionTitle,
   positionDate,
 }: RecordGameInput): Promise<RecordGameResult> {
   const { rating: newRating, deviation: newRatingDeviation, change } =
     updateRatingAfterGame(
       { rating: userRating, deviation: userRatingDeviation },
-      { rating: opponentRating, deviation: BOT_OPPONENT_RD },
+      { rating: opponentRating, deviation: opponentRatingDeviation },
       scoreFromResult(result),
     )
 

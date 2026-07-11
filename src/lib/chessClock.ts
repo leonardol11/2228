@@ -64,6 +64,11 @@ export function useChessClock({
     setTimes({ w: CLOCK_INITIAL_MS, b: CLOCK_INITIAL_MS })
   }, [])
 
+  /** Overwrite both clocks with authoritative values (e.g. from the server). */
+  const syncTimes = useCallback((next: ClockTimes) => {
+    setTimes({ w: Math.max(0, next.w), b: Math.max(0, next.b) })
+  }, [])
+
   const revertMove = useCallback((mover: Color) => {
     setTimes((prev) => ({
       ...prev,
@@ -71,5 +76,5 @@ export function useChessClock({
     }))
   }, [])
 
-  return { times, applyMove, revertMove, reset }
+  return { times, applyMove, revertMove, reset, syncTimes }
 }
