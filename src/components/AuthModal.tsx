@@ -356,7 +356,7 @@ export function AuthModal({ open, initialMode = "sign-in", onClose }: AuthModalP
                   type="text"
                   autoComplete="given-name"
                   required
-                  placeholder="Leonardo"
+                  placeholder="Bobby"
                   className={inputClass}
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -372,7 +372,7 @@ export function AuthModal({ open, initialMode = "sign-in", onClose }: AuthModalP
                   type="text"
                   autoComplete="family-name"
                   required
-                  placeholder="Liu"
+                  placeholder="Fischer"
                   className={inputClass}
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
@@ -391,7 +391,7 @@ export function AuthModal({ open, initialMode = "sign-in", onClose }: AuthModalP
                 required
                 minLength={3}
                 maxLength={20}
-                placeholder="leonardo_liu"
+                placeholder="bobby_fischer"
                 className={inputClass}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
