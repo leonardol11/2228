@@ -1151,7 +1151,7 @@ export function GamePage({ onExit, onSignIn, onSignUp }: GamePageProps) {
             )}
 
             {phase === "game_over" && outcome && showGameOverCard && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-cream/75 p-4 backdrop-blur-[3px]">
+              <div className="fixed inset-0 z-40 flex items-center justify-center bg-cream/75 p-4 backdrop-blur-[3px]">
                 <div className="relative mx-auto flex w-[22rem] max-w-full flex-col items-center overflow-hidden rounded-2xl border border-white/70 bg-white/55 px-7 py-3 text-center shadow-[0_20px_70px_rgba(28,26,23,0.14),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl">
                   <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-gold/14 to-transparent" />
 
@@ -1235,13 +1235,6 @@ export function GamePage({ onExit, onSignIn, onSignUp }: GamePageProps) {
                         onClick={onSignUp}
                       >
                         Sign Up
-                      </button>
-                      <button
-                        type="button"
-                        className={`${ghostButtonClass} relative mt-2 w-full`}
-                        onClick={resetGame}
-                      >
-                        Play Again
                       </button>
                     </>
                   ) : gameRecordedRef.current ? (
