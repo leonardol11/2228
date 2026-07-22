@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { useAuth } from "../context/AuthContext"
 import {
   SKILL_LEVELS,
@@ -8,10 +8,11 @@ import {
 
 type AuthModalProps = {
   open: boolean
+  initialMode?: Mode
   onClose: () => void
 }
 
-type Mode = "sign-in" | "sign-up"
+export type Mode = "sign-in" | "sign-up"
 type SignUpStep = 1 | 2 | 3
 
 const inputClass =
@@ -20,7 +21,7 @@ const inputClass =
 const labelClass =
   "text-[10px] font-medium tracking-[0.18em] text-muted uppercase"
 
-export function AuthModal({ open, onClose }: AuthModalProps) {
+export function AuthModal({ open, initialMode = "sign-in", onClose }: AuthModalProps) {
   const { signIn, signUp, checkUsernameAvailable } = useAuth()
   const [mode, setMode] = useState<Mode>("sign-in")
   const [signUpStep, setSignUpStep] = useState<SignUpStep>(1)
@@ -33,6 +34,12 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setMode(initialMode)
+    }
+  }, [open, initialMode])
 
   if (!open) return null
 

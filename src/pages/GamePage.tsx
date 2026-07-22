@@ -54,6 +54,7 @@ import { playerRatingSnapshot, type GameResult } from "../types/profile"
 type GamePageProps = {
   onExit: () => void
   onSignIn: () => void
+  onSignUp: () => void
 }
 
 type GamePhase = "matchmaking" | "loading" | "playing" | "game_over"
@@ -76,9 +77,6 @@ type Opponent =
 
 const ghostButtonClass =
   "cursor-pointer rounded-full border border-white/70 bg-white/50 px-4 py-2 text-[10px] font-medium tracking-[0.14em] text-ink/70 uppercase transition-all duration-300 hover:bg-white/80 hover:text-ink sm:px-5 sm:py-2.5 sm:text-[11px]"
-
-// Guests get a taste of the board before we ask them to sign in.
-const ANONYMOUS_MOVE_LIMIT = 4
 
 const MATCHMAKING_POLL_MS = 4000
 const MATCHMAKING_TIMEOUT_MS = 60_000
@@ -147,7 +145,7 @@ function formatSearchTime(seconds: number): string {
   return `${minutes}:${rest.toString().padStart(2, "0")}`
 }
 
-export function GamePage({ onExit, onSignIn }: GamePageProps) {
+export function GamePage({ onExit, onSignIn, onSignUp }: GamePageProps) {
   const {
     user,
     profile,
@@ -199,7 +197,6 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [showGameOverCard, setShowGameOverCard] = useState(true)
-  const [anonMoveCount, setAnonMoveCount] = useState(0)
   const gameRecordedRef = useRef(false)
   const drawTimeoutRef = useRef<number | null>(null)
   const controlMessageTimeoutRef = useRef<number | null>(null)
@@ -207,7 +204,6 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   const unsubGameRef = useRef<(() => void) | null>(null)
   const gameChannelRef = useRef<GameChannel | null>(null)
   const chatListenersRef = useRef(new Set<(text: string) => void>())
-  const authGateReached = !user && anonMoveCount >= ANONYMOUS_MOVE_LIMIT
 
   const assignUserColor = useCallback((color: Color) => {
     userColorRef.current = color
@@ -744,11 +740,11 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
   }, [])
 
   useEffect(() => {
-    if (authGateReached && !authPromptedRef.current) {
+    if (phase === "game_over" && !user && !authPromptedRef.current) {
       authPromptedRef.current = true
-      onSignIn()
+      onSignUp()
     }
-  }, [authGateReached, onSignIn])
+  }, [onSignUp, phase, user])
 
   const remoteChat = useMemo<RemoteChat | null>(() => {
     if (opponent?.kind !== "human") {
@@ -776,7 +772,7 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
       sourceSquare: string
       targetSquare: string | null
     }) => {
-      if (phase !== "playing" || botThinking || !targetSquare || authGateReached) {
+      if (phase !== "playing" || botThinking || !targetSquare) {
         return false
       }
 
@@ -798,10 +794,6 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
 
         setFen(chess.fen())
         syncMoves()
-
-        if (!user) {
-          setAnonMoveCount((count) => count + 1)
-        }
 
         const currentOpponent = opponentRef.current
 
@@ -851,19 +843,19 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
         return false
       }
     },
-    [applyMove, authGateReached, botThinking, botName, finishGame, phase, requestBotMove, syncMoves, user, userColor],
+    [applyMove, botThinking, botName, finishGame, phase, requestBotMove, syncMoves, userColor],
   )
 
   const canDragPiece = useCallback(
     ({ piece }: { piece: { pieceType: string } }) => {
-      if (phase !== "playing" || botThinking || authGateReached) {
+      if (phase !== "playing" || botThinking) {
         return false
       }
 
       const pieceColor = piece.pieceType[0]
       return pieceColor === userColor && chessRef.current.turn() === userColor
     },
-    [authGateReached, botThinking, phase, userColor],
+    [botThinking, phase, userColor],
   )
 
   const chessboardOptions = useMemo(
@@ -981,7 +973,6 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
     setControlMessage(null)
     setSyncError(null)
     setIncomingDrawOffer(false)
-    setAnonMoveCount(0)
     gameRecordedRef.current = false
     authPromptedRef.current = false
     unsubGameRef.current?.()
@@ -1159,28 +1150,6 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
               </div>
             )}
 
-            {authGateReached && phase === "playing" && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-cream/75 p-4 backdrop-blur-[3px]">
-                <div className="relative mx-auto flex w-[22rem] max-w-full flex-col items-center overflow-hidden rounded-2xl border border-white/70 bg-white/55 px-7 py-6 text-center shadow-[0_20px_70px_rgba(28,26,23,0.14),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl">
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-gold/14 to-transparent" />
-
-                  <p className="relative font-display text-xl text-ink">
-                    Sign in to keep playing
-                  </p>
-                  <p className="relative mt-2 max-w-xs text-sm leading-relaxed text-ink/75">
-                    You've played your {ANONYMOUS_MOVE_LIMIT} free moves. Sign in to finish the game and start tracking your rating.
-                  </p>
-                  <button
-                    type="button"
-                    className={`${ghostButtonClass} relative mt-4 w-full`}
-                    onClick={onSignIn}
-                  >
-                    Sign In
-                  </button>
-                </div>
-              </div>
-            )}
-
             {phase === "game_over" && outcome && showGameOverCard && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-cream/75 p-4 backdrop-blur-[3px]">
                 <div className="relative mx-auto flex w-[22rem] max-w-full flex-col items-center overflow-hidden rounded-2xl border border-white/70 bg-white/55 px-7 py-3 text-center shadow-[0_20px_70px_rgba(28,26,23,0.14),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl">
@@ -1255,7 +1224,27 @@ export function GamePage({ onExit, onSignIn }: GamePageProps) {
                     </p>
                   )}
 
-                  {user && gameRecordedRef.current ? (
+                  {!user ? (
+                    <>
+                      <p className="relative mt-3 max-w-xs text-sm leading-relaxed text-ink/75">
+                        Sign up to save this game and start tracking your rating.
+                      </p>
+                      <button
+                        type="button"
+                        className={`${ghostButtonClass} relative mt-3 w-full`}
+                        onClick={onSignUp}
+                      >
+                        Sign Up
+                      </button>
+                      <button
+                        type="button"
+                        className={`${ghostButtonClass} relative mt-2 w-full`}
+                        onClick={resetGame}
+                      >
+                        Play Again
+                      </button>
+                    </>
+                  ) : gameRecordedRef.current ? (
                     <p className="relative mt-3 text-[10px] tracking-[0.14em] text-muted uppercase">
                       That's your game for today — come back tomorrow
                     </p>

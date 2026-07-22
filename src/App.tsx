@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { AuthModal } from "./components/AuthModal"
+import { AuthModal, type Mode } from "./components/AuthModal"
 import { Header } from "./components/Header"
 import { DailyBoard } from "./components/DailyBoard"
 import { GamePage } from "./pages/GamePage"
@@ -18,6 +18,12 @@ function pageFromHash(hash: string): Page {
 function App() {
   const [page, setPage] = useState<Page>(() => pageFromHash(window.location.hash))
   const [authOpen, setAuthOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<Mode>("sign-in")
+
+  function openAuth(mode: Mode) {
+    setAuthMode(mode)
+    setAuthOpen(true)
+  }
 
   useEffect(() => {
     function handleHashChange() {
@@ -55,7 +61,7 @@ function App() {
       <Header
         onLeaderboard={goLeaderboard}
         onStartGame={goGame}
-        onSignIn={() => setAuthOpen(true)}
+        onSignIn={() => openAuth("sign-in")}
         onProfile={goProfile}
         onLogo={goHome}
       />
@@ -72,7 +78,7 @@ function App() {
         {page === "home" ? (
           <DailyBoard />
         ) : page === "game" ? (
-          <GamePage onExit={goHome} onSignIn={() => setAuthOpen(true)} />
+          <GamePage onExit={goHome} onSignIn={() => openAuth("sign-in")} onSignUp={() => openAuth("sign-up")} />
         ) : page === "profile" ? (
           <ProfilePage onBack={goHome} />
         ) : (
@@ -80,7 +86,7 @@ function App() {
         )}
       </main>
 
-      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+      <AuthModal open={authOpen} initialMode={authMode} onClose={() => setAuthOpen(false)} />
     </div>
   )
 }
